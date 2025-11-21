@@ -1,7 +1,10 @@
 fastapi
-uvicorn==0.22.0
+uvicorn
 python-dotenv
 requests
-openai
-pandas
 numpy
+Pillow
+sqlalchemy
+openai
+opencv-python-headless
+pyzbar
