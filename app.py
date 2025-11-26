@@ -611,6 +611,18 @@ def run_agent(phone: str, mtype: str, text: Optional[str], media_id: Optional[st
 # ---------- FastAPI ----------
 app = FastAPI(title="MBG WA Agent (Fully Agentic + Single-Send + Idempotent)")
 
+# ←←← TAMBAHKAN ROUTE HEALTH DI SINI (sebelum route lain) ←←←
+@app.get("/kaithhealth")
+async def health_main():
+    return {"status": "ok"}
+
+@app.get("/kaithhealthcheck")
+@app.get("/kaithheathcheck")   # typo yang muncul di log
+@app.get("/health")
+@app.get("/healthz")
+async def health_variants():
+    return {"status": "ok"}
+
 @app.get("/webhook", response_class=PlainTextResponse)
 def verify(hub_mode: str = Query(None, alias="hub.mode"),
            hub_challenge: str = Query(None, alias="hub.challenge"),

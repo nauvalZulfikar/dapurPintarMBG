@@ -1,0 +1,13 @@
+name: mbg-kitchen-bot
+region: auto
+runtime: python3.11
+
+build:
+  command: pip install -r requirements.txt
+
+start:
+  command: uvicorn app:app --host 0.0.0.0 --port 8080
+
+env:
+  - key: PORT
+    value: "8080"
