@@ -450,9 +450,6 @@ def save_tspl_to_file(tspl_code: str, file_path: str):
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(tspl_code)
 
-import win32print
-import win32api
-
 def send_to_print_agent(tspl_code: str):
     try:
         payload = {
