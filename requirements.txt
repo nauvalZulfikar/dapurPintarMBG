@@ -8,4 +8,3 @@ sqlalchemy
 openai
 opencv-python-headless
 pyzbar
-win32print
