@@ -8,9 +8,10 @@ import requests
 import subprocess
 import numpy as np
 import cv2
-from fastapi import FastAPI, Request, Query
+from fastapi import FastAPI, Request, Query, Header
 from fastapi.responses import JSONResponse, PlainTextResponse
 from dotenv import load_dotenv
+from pydantic import BaseModel
 from PIL import Image
 
 # ---------- TZ ----------
@@ -115,6 +116,16 @@ inbound_seen = Table(
     "inbound_seen", metadata,
     Column("id", String, primary_key=True),   # WhatsApp message.id
     Column("created_at", DateTime, server_default=func.now()),
+)
+
+# --- Print jobs (queue for mini PC polling) ---
+print_jobs = Table(
+    "print_jobs", metadata,
+    Column("id", Integer, primary_key=True),
+    Column("tspl", Text, nullable=False),
+    Column("created_at", DateTime, server_default=func.now()),
+    Column("printed", Integer, server_default="0"),  # 0 = pending, 1 = printed
+    Column("printed_at", DateTime, nullable=True),
 )
 
 metadata.create_all(engine)
@@ -369,6 +380,42 @@ def mark_inbound_seen(mid: Optional[str]) -> bool:
         c.execute(inbound_seen.insert().values(id=mid))
         return False
 
+def db_create_print_job(tspl: str) -> int:
+    """Insert a new print job and return its ID."""
+    with engine.begin() as c:
+        res = c.execute(
+            print_jobs.insert().values(tspl=tspl, printed=0)
+        )
+        return res.inserted_primary_key[0]
+
+
+def db_get_next_print_job() -> Optional[dict]:
+    """Fetch the oldest unprinted job (printed=0)."""
+    with engine.connect() as c:
+        row = (
+            c.execute(
+                select(print_jobs)
+                .where(print_jobs.c.printed == 0)
+                .order_by(print_jobs.c.id.asc())
+                .limit(1)
+            )
+            .first()
+        )
+        return dict(row._mapping) if row else None
+
+
+def db_mark_print_job_printed(job_id: int):
+    """Mark a job as printed."""
+    with engine.begin() as c:
+        c.execute(
+            print_jobs.update()
+            .where(print_jobs.c.id == job_id)
+            .values(
+                printed=1,
+                printed_at=func.now(),
+            )
+        )
+
 # ---------- Printing (TSPL Style for 4BARCODE printers) ----------
 
 def qr_link_for_item(item_id: str) -> str:
@@ -590,12 +637,13 @@ def tool_create_item(
         extra={"name": name, "weight_grams": int(weight_grams)},
     )
 
-    # Generate and print label
+    # Generate TSPL label and enqueue print job
     try:
         tspl = tspl_label(item_id, name, weight_grams)
-        send_to_print_agent(tspl)
+        job_id = db_create_print_job(tspl)
+        print(f"[PRINT QUEUE] Enqueued job_id={job_id} for item {item_id}")
     except Exception as e:
-        print(f"[PRINT ERROR] {e}")
+        print(f"[PRINT QUEUE ERROR] {e}")
 
     # Create WhatsApp link for item ID
     link = qr_link_for_item(item_id)
@@ -906,6 +954,9 @@ def run_agent(phone: str, mtype: str, text: Optional[str], media_id: Optional[st
 # ---------- FastAPI ----------
 app = FastAPI(title="MBG WA Agent (Fully Agentic + Single-Send + Idempotent)")
 
+class PrintCompletePayload(BaseModel):
+    id: int
+
 @app.get("/kaithhealth")
 async def health_main():
     return {"status": "ok"}
@@ -916,6 +967,60 @@ async def health_main():
 @app.get("/healthz")
 async def health_variants():
     return {"status": "ok"}
+
+CLOUD_PRINT_KEY = os.getenv("CLOUD_PRINT_KEY", "")
+
+
+def _check_print_key(x_print_key: Optional[str]):
+    if CLOUD_PRINT_KEY:
+        if not x_print_key or x_print_key != CLOUD_PRINT_KEY:
+            raise JSONResponse(
+                status_code=403,
+                content={"detail": "Invalid print key"},
+            )
+
+
+@app.get("/print-queue")
+async def print_queue(x_print_key: Optional[str] = Header(None, alias="X-Print-Key")):
+    """
+    Called by mini PC.
+    Returns at most ONE pending print job.
+    """
+    if CLOUD_PRINT_KEY:
+        if not x_print_key or x_print_key != CLOUD_PRINT_KEY:
+            return JSONResponse({"detail": "Forbidden"}, status_code=403)
+
+    job = db_get_next_print_job()
+    if not job:
+        return {"jobs": []}
+
+    return {
+        "jobs": [
+            {
+                "id": job["id"],
+                "tspl": job["tspl"],
+            }
+        ]
+    }
+
+
+@app.post("/print-complete")
+async def print_complete(
+    payload: PrintCompletePayload,
+    x_print_key: Optional[str] = Header(None, alias="X-Print-Key"),
+):
+    """
+    Mini PC calls this after successfully printing.
+    """
+    if CLOUD_PRINT_KEY:
+        if not x_print_key or x_print_key != CLOUD_PRINT_KEY:
+            return JSONResponse({"detail": "Forbidden"}, status_code=403)
+
+    try:
+        db_mark_print_job_printed(payload.id)
+        return {"ok": True}
+    except Exception as e:
+        return JSONResponse({"detail": str(e)}, status_code=500)
 
 @app.get("/webhook", response_class=PlainTextResponse)
 def verify(
