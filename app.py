@@ -450,6 +450,9 @@ def save_tspl_to_file(tspl_code: str, file_path: str):
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(tspl_code)
 
+# import win32print
+# import win32api
+
 def send_to_print_agent(tspl_code: str):
     try:
         payload = {
@@ -950,6 +953,10 @@ def run_agent(phone: str, mtype: str, text: Optional[str], media_id: Optional[st
 
 # ---------- FastAPI ----------
 app = FastAPI(title="MBG WA Agent (Fully Agentic + Single-Send + Idempotent)")
+
+@app.get("/")
+def root():
+    return {"status": "ok"}
 
 class PrintCompletePayload(BaseModel):
     id: int
