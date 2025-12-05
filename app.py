@@ -419,7 +419,7 @@ def db_mark_print_job_printed(job_id: int):
 # ---------- Printing (TSPL Style for 4BARCODE printers) ----------
 
 def qr_link_for_item(item_id: str) -> str:
-    return f"https://wa.me/6287727981162?text={item_id}"
+    return f"https://wa.me/628132258085?text={item_id}"
 
 # new
 def tspl_label(item_id: str, name: str, weight_g: int) -> str:
