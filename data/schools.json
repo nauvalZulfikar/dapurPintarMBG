@@ -1,0 +1,140 @@
+[
+  {
+    "school_id": 1.0,
+    "name": "RA AL- AMANAH",
+    "distance": 450,
+    "student_count": 12
+  },
+  {
+    "school_id": 2.0,
+    "name": "RA DARUL JADID",
+    "distance": 400,
+    "student_count": 26
+  },
+  {
+    "school_id": 3.0,
+    "name": "RA DARUL QUR'AN",
+    "distance": 750,
+    "student_count": 79
+  },
+  {
+    "school_id": 4.0,
+    "name": "RA MIFTAHUL FAIZIN",
+    "distance": 3400,
+    "student_count": 22
+  },
+  {
+    "school_id": 5.0,
+    "name": "RA ARCHMATU SA'ADAH",
+    "distance": 2800,
+    "student_count": 43
+  },
+  {
+    "school_id": 6.0,
+    "name": "RA MIFTAHUL JANAH",
+    "distance": 6600,
+    "student_count": 35
+  },
+  {
+    "school_id": 7.0,
+    "name": "RA NURUL IKHWAN",
+    "distance": 6300,
+    "student_count": 23
+  },
+  {
+    "school_id": 8.0,
+    "name": "RA AINUL HAQ",
+    "distance": 3800,
+    "student_count": 40
+  },
+  {
+    "school_id": 9.0,
+    "name": "RA YABHINA",
+    "distance": 2700,
+    "student_count": 40
+  },
+  {
+    "school_id": 10.0,
+    "name": "RA ASHAQOFAT",
+    "distance": 2600,
+    "student_count": 22
+  },
+  {
+    "school_id": 11.0,
+    "name": "RA AN-NAML",
+    "distance": 4200,
+    "student_count": 73
+  },
+  {
+    "school_id": 12.0,
+    "name": "TK SAHABAT QURAN",
+    "distance": 1500,
+    "student_count": 21
+  },
+  {
+    "school_id": 13.0,
+    "name": "KB ISTIQOMAH",
+    "distance": 4300,
+    "student_count": 34
+  },
+  {
+    "school_id": 14.0,
+    "name": "KB ULUL AZMJ",
+    "distance": 4100,
+    "student_count": 35
+  },
+  {
+    "school_id": 15.0,
+    "name": "KB ASYIFA",
+    "distance": 2000,
+    "student_count": 63
+  },
+  {
+    "school_id": 16.0,
+    "name": "MI AL - AMANAH",
+    "distance": 450,
+    "student_count": 125
+  },
+  {
+    "school_id": 17.0,
+    "name": "MI ASHAQOFAH",
+    "distance": 2600,
+    "student_count": 115
+  },
+  {
+    "school_id": 18.0,
+    "name": "MTS AL - AMANAH",
+    "distance": 450,
+    "student_count": 118
+  },
+  {
+    "school_id": 19.0,
+    "name": "MTS ASHAQOFAH",
+    "distance": 2600,
+    "student_count": 42
+  },
+  {
+    "school_id": 20.0,
+    "name": "MTS MIFTAHUL ULUM",
+    "distance": 5300,
+    "student_count": 155
+  },
+  {
+    "school_id": 21.0,
+    "name": "MTS MUTA'ALIM",
+    "distance": 2000,
+    "student_count": 39
+  },
+  {
+    "school_id": 22.0,
+    "name": "MA AL - AMANAH",
+    "distance": 450,
+    "student_count": 56
+  },
+  {
+    "school_id": 23.0,
+    "name": "DTA AN - NAML",
+    "distance": 4200,
+    "student_count": 63
+  }
+]
