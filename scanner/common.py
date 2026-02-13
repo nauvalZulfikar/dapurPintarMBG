@@ -44,8 +44,8 @@ metadata = MetaData()
 
 # ───────────────────────────── TABLE DEFINITIONS ─────────────────────────────
 
-trays_items = Table(
-    "trays_items", metadata,
+tray_items = Table(
+    "tray_items", metadata,
     Column("tray_id", Text, primary_key=True),
 )
 
@@ -196,7 +196,7 @@ def _log_success(conn, barcode: str, label: str, reason: str = None):
 
 def _tray_is_registered(conn, tray_id: str) -> bool:
     row = _exec_retry(lambda: conn.execute(
-        select(trays_items.c.tray_id).where(trays_items.c.tray_id == tray_id).limit(1)
+        select(tray_items.c.tray_id).where(tray_items.c.tray_id == tray_id).limit(1)
     ).fetchone())
     return row is not None
 
