@@ -24,6 +24,6 @@ def render_events_tab(events_filtered: pd.DataFrame):
             "duration_seconds",
         ]
         cols_to_show = [c for c in cols_to_show if c in events_filtered.columns]
-        st.dataframe(events_filtered[cols_to_show], use_container_width=True)
+        st.dataframe(events_filtered[cols_to_show], width=True)
     else:
         st.info("No events for the current filter.")
