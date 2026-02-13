@@ -16,7 +16,13 @@ from backend.services.delivery_optimizer import (
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, '../../scans.db')}")
-SCHOOLS_JSON_PATH = os.getenv("SCHOOLS_JSON_PATH", os.path.join(BASE_DIR, "../../data/schools.json"))
+
+# Get project root (2 levels up from this file)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+SCHOOLS_JSON_PATH = os.getenv(
+    "SCHOOLS_JSON_PATH", 
+    str(PROJECT_ROOT / "data" / "schools.json")
+)
 
 # Create engine
 engine_kwargs = {"future": True, "pool_pre_ping": True}
