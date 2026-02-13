@@ -7,6 +7,13 @@ def render_delivery_assignments():
     """Render tray assignments to schools section"""
     st.subheader("Tray Assignments to Schools")
     
+    # ── TEMPORARY DEBUG ──────────────────────────────────────────────
+    from frontend.utils.data_loader import SCHOOLS_JSON_PATH
+    import os
+    st.write(f"SCHOOLS_JSON_PATH: {SCHOOLS_JSON_PATH}")
+    st.write(f"File exists: {os.path.exists(SCHOOLS_JSON_PATH)}")
+    # ── END DEBUG ────────────────────────────────────────────────────
+    
     # Fetch assignments
     try:
         assignments = optimize_delivery()
