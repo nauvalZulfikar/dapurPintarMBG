@@ -21,7 +21,7 @@ def render_trays_tab(trays: pd.DataFrame, tray_items: pd.DataFrame):
         if not trays.empty:
             # Sort by created_at descending to show newest first
             trays_sorted = trays.sort_values('created_at', ascending=False)
-            st.dataframe(trays_sorted, use_container_width=True)
+            st.dataframe(trays_sorted, width=True)
         else:
             st.warning("No trays in database yet.")
 
@@ -30,7 +30,7 @@ def render_trays_tab(trays: pd.DataFrame, tray_items: pd.DataFrame):
         if not tray_items.empty:
             # Sort by bound_at descending to show newest first
             tray_items_sorted = tray_items.sort_values('bound_at', ascending=False)
-            st.dataframe(tray_items_sorted, use_container_width=True)
+            st.dataframe(tray_items_sorted, width=True)
         else:
             st.warning("No tray_items in database yet.")
             
@@ -45,4 +45,4 @@ def render_trays_tab(trays: pd.DataFrame, tray_items: pd.DataFrame):
             right_on='id',
         )
         merged_sorted = merged.sort_values('bound_at', ascending=False)
-        st.dataframe(merged_sorted, use_container_width=True)
+        st.dataframe(merged_sorted, width=True)
