@@ -18,7 +18,7 @@ def render_staff_tab(staffs: pd.DataFrame):
                     "staff_division": "division",
                 }
             ),
-            use_container_width=True,
+            width=True,
         )
     else:
         st.info("No staff registered.")
