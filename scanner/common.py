@@ -55,8 +55,8 @@ scans = Table(
     Column("barcode",    Text,    nullable=False),
     Column("status",     Text,    nullable=False),
     Column("label",      Text,    nullable=False),
-    Column("scanned_at", Text,    nullable=False),
-    Column("scan_date",  Text,    nullable=False),
+    Column("created_at", Text,    nullable=False),
+    Column("created_date",  Text,    nullable=False),
     Column("reason",     Text),
     UniqueConstraint("barcode", "label", "scan_date", name="uq_scans_barcode_label_day"),
 )
