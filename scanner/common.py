@@ -66,7 +66,7 @@ scan_errors = Table(
     Column("id",         Integer, primary_key=True, autoincrement=True),
     Column("barcode",    Text),
     Column("label",      Text,    nullable=False),
-    Column("scanned_at", Text,    nullable=False),
+    Column("", Text,    nullable=False),
     Column("reason",     Text,    nullable=False),
 )
 
@@ -179,7 +179,7 @@ def _exec_retry(fn):
 def _log_error(conn, barcode: str, label: str, reason: str):
     when = now_str()
     _exec_retry(lambda: conn.execute(
-        insert(scan_errors).values(barcode=barcode, label=label, scanned_at=when, reason=reason)
+        insert(scan_errors).values(barcode=barcode, label=label, =when, reason=reason)
     ))
 
 
@@ -189,7 +189,7 @@ def _log_success(conn, barcode: str, label: str, reason: str = None):
     _exec_retry(lambda: conn.execute(
         insert(scans).values(
             barcode=barcode, status="SUKSES", label=label,
-            scanned_at=when, scan_date=scan_date, reason=reason,
+            =when, scan_date=scan_date, reason=reason,
         )
     ))
 
@@ -205,7 +205,7 @@ def _latest_label(conn, barcode: str) -> str | None:
     row = _exec_retry(lambda: conn.execute(
         select(scans.c.label)
         .where(scans.c.barcode == barcode)
-        .order_by(scans.c.scanned_at.desc(), scans.c.id.desc())
+        .order_by(scans.c..desc(), scans.c.id.desc())
         .limit(1)
     ).fetchone())
     return row[0] if row else None
