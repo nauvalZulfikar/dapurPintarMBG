@@ -37,12 +37,12 @@ def render_trays_tab(trays: pd.DataFrame, tray_items: pd.DataFrame):
     # Add a detailed view showing tray items joined with tray info
     if not tray_items.empty and not trays.empty:
         st.markdown("### Detailed Tray-Item Binding")
+        tray_items['tray_id'] = tray_items['tray_id'].astype(str)
+        trays['id'] = trays['id'].astype(str)
         merged = tray_items.merge(
-            trays[['id', 'created_at']], 
-            left_on='tray_id', 
+            trays[['id', 'created_at']],
+            left_on='tray_id',
             right_on='id',
-            how='left',
-            suffixes=('_item', '_tray')
         )
         merged_sorted = merged.sort_values('bound_at', ascending=False)
         st.dataframe(merged_sorted, use_container_width=True)
