@@ -1,9 +1,11 @@
+# DPMBG_Project\backend\services\delivery_optimizer.py
 import json
 from datetime import datetime
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from backend.core.models import FoodTray, School
-from backend.core.database import Event, func
+from backend.core.database import engine
+from sqlalchemy import text
 
 def load_schools_from_json(file_path: str) -> List[School]:
     with open(file_path, 'r') as f:
@@ -21,23 +23,20 @@ def load_schools_from_json(file_path: str) -> List[School]:
 
 def fetch_trays_packed_times(db_session: Session) -> List[FoodTray]:
     today = datetime.now().date()
-    rows = (
-        db_session.query(
-            Event.subject_id.label("tray_id"),
-            func.min(Event.ts_local).label("prepared_time"),
-        )
-        .filter(Event.subject_type == "tray")
-        .filter(Event.division == "packing")
-        .filter(func.date(Event.ts_local) == str(today))
-        .group_by(Event.subject_id)
-        .order_by(func.min(Event.ts_local).asc())
-        .all()
-    )
+    rows = db_session.execute(
+        text("""
+            SELECT tray_id, created_at
+            FROM trays
+            WHERE label = 'packed'
+            AND created_date = :today
+            ORDER BY created_at ASC
+        """),
+        {"today": str(today)}
+    ).fetchall()
 
     food_trays: List[FoodTray] = []
-    for tray_id, prepared_time_str in rows:
-        # ts_local is ISO string; convert to datetime for safety
-        prepared_time = datetime.fromisoformat(prepared_time_str)
+    for tray_id, created_at_str in rows:
+        prepared_time = datetime.fromisoformat(created_at_str)
         food_trays.append(FoodTray(tray_id=tray_id, prepared_time=prepared_time))
 
     return food_trays
