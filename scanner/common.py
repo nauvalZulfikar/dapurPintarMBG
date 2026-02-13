@@ -30,10 +30,12 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 load_dotenv()
 
 _here = os.path.dirname(os.path.abspath(__file__))
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    f"sqlite:///{os.path.join(_here, 'scans.db')}",
-)
+load_dotenv(os.path.join(_here, '..', '.env'))
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    print("[WARN] DATABASE_URL not set — falling back to local SQLite. Data will NOT go to Supabase.", flush=True)
+    DATABASE_URL = f"sqlite:///{os.path.join(_here, 'scans.db')}"
 
 _engine_kwargs: dict = {"future": True, "pool_pre_ping": True}
 if DATABASE_URL.startswith("sqlite"):
@@ -66,7 +68,7 @@ scan_errors = Table(
     Column("id",         Integer, primary_key=True, autoincrement=True),
     Column("barcode",    Text),
     Column("label",      Text,    nullable=False),
-    Column("", Text,    nullable=False),
+    Column("created_at", Text,    nullable=False),
     Column("reason",     Text,    nullable=False),
 )
 
@@ -179,7 +181,7 @@ def _exec_retry(fn):
 def _log_error(conn, barcode: str, label: str, reason: str):
     when = now_str()
     _exec_retry(lambda: conn.execute(
-        insert(scan_errors).values(barcode=barcode, label=label, =when, reason=reason)
+        insert(scan_errors).values(barcode=barcode, label=label, created_at=when, reason=reason)
     ))
 
 
@@ -189,7 +191,7 @@ def _log_success(conn, barcode: str, label: str, reason: str = None):
     _exec_retry(lambda: conn.execute(
         insert(scans).values(
             barcode=barcode, status="SUKSES", label=label,
-            =when, scan_date=scan_date, reason=reason,
+            created_at=when, created_date=scan_date, reason=reason,
         )
     ))
 
@@ -205,7 +207,7 @@ def _latest_label(conn, barcode: str) -> str | None:
     row = _exec_retry(lambda: conn.execute(
         select(scans.c.label)
         .where(scans.c.barcode == barcode)
-        .order_by(scans.c..desc(), scans.c.id.desc())
+        .order_by(scans.c.created_at.desc(), scans.c.id.desc())
         .limit(1)
     ).fetchone())
     return row[0] if row else None
