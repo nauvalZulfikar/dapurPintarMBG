@@ -50,7 +50,7 @@ tray_items = Table(
 )
 
 scans = Table(
-    "scans", metadata,
+    "trays", metadata,
     Column("id",         Integer, primary_key=True, autoincrement=True),
     Column("barcode",    Text,    nullable=False),
     Column("status",     Text,    nullable=False),
