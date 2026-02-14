@@ -79,8 +79,8 @@ def create_tables():
 
 # ─────────────────────────── DEFAULT CONFIG ──────────────────────────────────
 
-SUCCESS_SOUND    = "./SUCCESS.mp3"
-FAILED_SOUND     = "./FAILED.mp3"
+SUCCESS_SOUND    = "scanner/SUCCESS.mp3"
+FAILED_SOUND     = "scanner/FAILED.mp3"
 DEBOUNCE_SECONDS = 0.7
 DB_LOCK_RETRIES  = 6
 DB_LOCK_SLEEP    = 0.15
