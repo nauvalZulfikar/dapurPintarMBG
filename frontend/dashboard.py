@@ -10,7 +10,6 @@ from components.filters import (
 from components.charts import render_activity_charts, render_items_summary
 from pages.overview import render_overview
 from pages.items import render_items_tab
-from pages.events import render_events_tab
 from pages.trays import render_trays_tab
 from pages.delivery import render_delivery_assignments
 from utils.data_loader import prepare_data, engine
@@ -22,10 +21,10 @@ def main():
     
     if st.session_state.logged_in:
         st.set_page_config(
-            page_title="MBG Kitchen – WhatsApp Ops Dashboard",
+            page_title="Dapur Pintar MBG Kitchen Dashboard",
             layout="wide",
         )
-        st.title("📊 MBG Kitchen – WhatsApp Ops Dashboard")
+        st.title("📊 Dapur Pintar MBG Kitchen Dashboard")
         
         # Sidebar
         st.sidebar.header("Filters")
@@ -63,14 +62,12 @@ def main():
         render_delivery_assignments()
         
         # Tabs
-        tab1, tab2, tab3 = st.tabs(
-            ["📦 Items", "📝 Events Log", "🧺 Trays"]
+        tab1, tab2 = st.tabs(
+            ["📦 Items", "🧺 Trays"]
         )
         with tab1:
             render_items_tab(items)
         with tab2:
-            render_events_tab(events_filtered)
-        with tab3:
             render_trays_tab(trays, tray_items)
     else:
         login()
