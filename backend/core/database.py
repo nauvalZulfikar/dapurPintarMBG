@@ -1,8 +1,7 @@
 # DPMBG_Project/backend/core/database.py
 import os
-import json
 from datetime import date
-from typing import Optional, Tuple
+from typing import Optional
 
 from backend.utils.datetime_helpers import now_local_iso
 
@@ -12,7 +11,7 @@ from sqlalchemy import (
 )
 
 # ============================================================
-# DB (SQLAlchemy)
+# ENGINE
 # ============================================================
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -32,12 +31,11 @@ metadata = MetaData()
 # TABLES
 # ============================================================
 
-# --- Master entities (ingredients/items)
-# Pure registry: only stores what the ingredient IS, not where it is in the pipeline.
-# Pipeline state (received/processed/packed/delivered) is tracked in the trays table.
+# --- Ingredient registry
+# Stores what an ingredient IS (name, weight). Pipeline state is in trays.
 items = Table(
     "items", metadata,
-    Column("id", String, primary_key=True),   # BHN-xxxxx
+    Column("id", String, primary_key=True),          # BHN-xxxxx
     Column("name", String),
     Column("weight_grams", Integer),
     Column("unit", String),
@@ -61,23 +59,34 @@ Index("ix_tray_items_tray", tray_items.c.tray_id)
 # Packing     | TRY-xxxxx     | "packed"
 # Delivery    | TRY-xxxxx     | "delivered"
 #
-# Validation rules (enforced in common.py / receiving.py):
-#   Processing  → requires latest label for BHN code == "received"
-#   Packing     → requires tray_id registered in tray_items
-#   Delivery    → requires latest label for TRY code == "packed"
+# Validation rules:
+#   Processing → latest label for BHN code must be "received"
+#   Packing    → tray_id must be registered in tray_items
+#   Delivery   → latest label for TRY code must be "packed"
 trays = Table(
     "trays", metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("tray_id", Text, nullable=False),         # scanned code (BHN-... or TRY-...)
+    Column("tray_id", Text, nullable=False),
     Column("status", Text, nullable=False),          # "SUKSES" / "GAGAL"
     Column("label", Text, nullable=False),           # "received" / "processed" / "packed" / "delivered"
-    Column("created_at", Text, nullable=False),      # ISO string
+    Column("created_at", Text, nullable=False),      # ISO datetime string
     Column("created_date", Text, nullable=False),    # YYYY-MM-DD string
-    Column("reason", Text, nullable=True),           # optional message / QC payload
+    Column("reason", Text, nullable=True),
     UniqueConstraint("tray_id", "label", "created_date", name="uq_scans_code_label_day"),
 )
 Index("ix_trays_code", trays.c.tray_id)
 Index("ix_trays_label_date", trays.c.label, trays.c.created_date)
+
+# --- Scan error log (failed scans from all scanner steps)
+scan_errors = Table(
+    "scan_errors", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("tray_id", Text),
+    Column("label", Text, nullable=False),
+    Column("created_at", Text, nullable=False),
+    Column("reason", Text, nullable=False),
+)
+Index("ix_scan_errors_code", scan_errors.c.tray_id)
 
 # --- Print jobs (queue for mini PC polling)
 print_jobs = Table(
@@ -89,7 +98,7 @@ print_jobs = Table(
     Column("printed_at", DateTime, nullable=True),
 )
 
-# Create tables
+# Create all tables
 metadata.create_all(engine)
 
 # ============================================================
@@ -132,10 +141,10 @@ def db_log_scan(code: str, label: str, status: str = "SUKSES", reason: Optional[
     """
     Insert one scan event row into trays table.
 
-    - code:   BHN-xxxxx (for receiving/processing) or TRY-xxxxx (for packing/delivery)
+    - code:   BHN-xxxxx (receiving/processing) or TRY-xxxxx (packing/delivery)
     - label:  "received" / "processed" / "packed" / "delivered"
     - status: "SUKSES" / "GAGAL"
-    - reason: optional QC payload or error reason
+    - reason: optional QC payload or error message
     """
     created_at_iso = created_at_iso or _iso_now()
     created_date = created_date or _today_str()
@@ -164,6 +173,18 @@ def db_get_latest_label(code: str) -> Optional[str]:
             .limit(1)
         ).first()
         return row[0] if row else None
+
+def db_log_scan_error(code: str, label: str, reason: str):
+    """Insert a failed scan into the scan_errors log."""
+    with engine.begin() as c:
+        c.execute(
+            insert(scan_errors).values(
+                tray_id=code,
+                label=label,
+                created_at=_iso_now(),
+                reason=reason,
+            )
+        )
 
 # ---------- Print jobs ----------
 def db_enqueue_print(tspl: str) -> int:
