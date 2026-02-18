@@ -16,7 +16,7 @@ Pipeline flow:
   Packing      → trays(label="packed")      [validates: tray registered in tray_items]
   Delivery     → trays(label="delivered")   [validates: latest label == "packed"]
 
-Set DATABASE_URL in .env (defaults to local SQLite scans.db if not set).
+All table definitions live in backend.core.database — do not redefine them here.
 """
 
 import os
@@ -26,63 +26,24 @@ import time
 from datetime import datetime
 
 from dotenv import load_dotenv
-from sqlalchemy import (
-    create_engine, MetaData, Table, Column,
-    Integer, Text, UniqueConstraint,
-    select, insert,
-)
+from sqlalchemy import select, insert
 from sqlalchemy.exc import IntegrityError, OperationalError
 
-# ─────────────────────────── ENV / ENGINE SETUP ──────────────────────────────
+# ── Import everything from the single source of truth ────────────────────────
+from backend.core.database import (
+    engine,
+    tray_items,
+    trays as scans,        # "scans" alias keeps the rest of this file unchanged
+    scan_errors,
+    metadata,
+)
 
 load_dotenv()
-
 _here = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(_here, '..', '.env'))
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    print("[WARN] DATABASE_URL not set — falling back to local SQLite. Data will NOT go to Supabase.", flush=True)
-    DATABASE_URL = f"sqlite:///{os.path.join(_here, 'scans.db')}"
-
-_engine_kwargs: dict = {"future": True, "pool_pre_ping": True}
-if DATABASE_URL.startswith("sqlite"):
-    _engine_kwargs["connect_args"] = {"check_same_thread": False}
-
-engine = create_engine(DATABASE_URL, **_engine_kwargs)
-metadata = MetaData()
-
-# ───────────────────────────── TABLE DEFINITIONS ─────────────────────────────
-
-tray_items = Table(
-    "tray_items", metadata,
-    Column("tray_id", Text, primary_key=True),
-)
-
-# trays = scan event log (single source of truth for pipeline position)
-scans = Table(
-    "trays", metadata,
-    Column("id",           Integer, primary_key=True, autoincrement=True),
-    Column("tray_id",      Text,    nullable=False),   # BHN-xxxxx or TRY-xxxxx
-    Column("status",       Text,    nullable=False),   # "SUKSES" / "GAGAL"
-    Column("label",        Text,    nullable=False),   # "received" / "processed" / "packed" / "delivered"
-    Column("created_at",   Text,    nullable=False),
-    Column("created_date", Text,    nullable=False),
-    Column("reason",       Text),
-    UniqueConstraint("tray_id", "label", "created_date", name="uq_scans_barcode_label_day"),
-)
-
-scan_errors = Table(
-    "scan_errors", metadata,
-    Column("id",         Integer, primary_key=True, autoincrement=True),
-    Column("tray_id",    Text),
-    Column("label",      Text,    nullable=False),
-    Column("created_at", Text,    nullable=False),
-    Column("reason",     Text,    nullable=False),
-)
-
 def create_tables():
-    """Create all tables (safe to call repeatedly)."""
+    """Create all tables (safe to call repeatedly). Schema lives in database.py."""
     metadata.create_all(engine)
 
 
@@ -220,7 +181,6 @@ def _tray_is_registered(conn, tray_id: str) -> bool:
         select(tray_items.c.tray_id).where(tray_items.c.tray_id == tray_id).limit(1)
     ).fetchone())
     return row is not None
-
 
 def _latest_label(conn, code: str) -> str | None:
     """Return the most recent pipeline label for a BHN or TRY code."""
