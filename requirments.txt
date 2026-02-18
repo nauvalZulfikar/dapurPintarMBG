@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+python-dotenv
+requests
+numpy
+Pillow
+sqlalchemy
+opencv-python-headless
+pyzbar
+psycopg2-binary
+streamlit
+pandas
