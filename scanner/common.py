@@ -2,13 +2,21 @@
 """
 common.py
 
-Merges:
-  - SQLAlchemy engine/session setup from common.py (PostgreSQL-ready, scalable)
-  - All scanner business logic from common_old.py (validation, debounce, sound, runner)
+Scanner business logic for the 3 barcode-scanning steps:
+  - Processing  (scans BHN-xxxxx, validates label == "received")
+  - Packing     (scans TRY-xxxxx, validates tray is registered)
+  - Delivery    (scans TRY-xxxxx, validates label == "packed")
 
-Usage:
-  Set DATABASE_URL in .env (defaults to local SQLite scans.db if not set).
-  Import run_scanner and call it with a mode string.
+Receiving is handled separately via receiving.py (Streamlit form),
+which writes to both the items registry and the trays event log.
+
+Pipeline flow:
+  receiving.py → trays(label="received")
+  Processing   → trays(label="processed")   [validates: latest label == "received"]
+  Packing      → trays(label="packed")      [validates: tray registered in tray_items]
+  Delivery     → trays(label="delivered")   [validates: latest label == "packed"]
+
+Set DATABASE_URL in .env (defaults to local SQLite scans.db if not set).
 """
 
 import os
@@ -51,15 +59,16 @@ tray_items = Table(
     Column("tray_id", Text, primary_key=True),
 )
 
+# trays = scan event log (single source of truth for pipeline position)
 scans = Table(
     "trays", metadata,
-    Column("id",         Integer, primary_key=True, autoincrement=True),
-    Column("tray_id",    Text,    nullable=False),
-    Column("status",     Text,    nullable=False),
-    Column("label",      Text,    nullable=False),
-    Column("created_at", Text,    nullable=False),
-    Column("created_date",  Text,    nullable=False),
-    Column("reason",     Text),
+    Column("id",           Integer, primary_key=True, autoincrement=True),
+    Column("tray_id",      Text,    nullable=False),   # BHN-xxxxx or TRY-xxxxx
+    Column("status",       Text,    nullable=False),   # "SUKSES" / "GAGAL"
+    Column("label",        Text,    nullable=False),   # "received" / "processed" / "packed" / "delivered"
+    Column("created_at",   Text,    nullable=False),
+    Column("created_date", Text,    nullable=False),
+    Column("reason",       Text),
     UniqueConstraint("tray_id", "label", "created_date", name="uq_scans_barcode_label_day"),
 )
 
@@ -73,7 +82,7 @@ scan_errors = Table(
 )
 
 def create_tables():
-    """Create all tables (safe to call repeatedly; uses CREATE IF NOT EXISTS)."""
+    """Create all tables (safe to call repeatedly)."""
     metadata.create_all(engine)
 
 
@@ -84,8 +93,9 @@ FAILED_SOUND     = "scanner/FAILED.mp3"
 DEBOUNCE_SECONDS = 0.7
 DB_LOCK_RETRIES  = 6
 DB_LOCK_SLEEP    = 0.15
+BHN_PREFIX       = "BHN-"
 TRAY_PREFIX      = "TRY-"
-TRAY_LEN         = 12
+TRAY_LEN         = 12          # "TRY-" (4) + 8 chars = 12 total
 ALLOWED_STEPS    = {"Processing", "Packing", "Delivery"}
 
 # ─────────────────────────── OUTPUT HELPERS ──────────────────────────────────
@@ -132,16 +142,18 @@ def extract_code(raw: str) -> str:
     Normalises a raw scan string into a clean barcode/tray ID.
 
     Handles:
-      - Plain TRY-XXXX strings
+      - Plain BHN-XXXX or TRY-XXXX strings
       - URLs containing tray_id=, ingredient_id=, id=, or barcode= params
-      - Anything containing TRY- somewhere (strips surrounding delimiters)
-    Falls back to the stripped raw value for non-tray codes (e.g. ingredient IDs).
+      - Anything containing BHN- or TRY- somewhere (strips surrounding delimiters)
+    Falls back to the stripped raw value.
     """
     s = (raw or "").strip()
     if not s:
         return ""
 
     lower = s.lower()
+
+    # Handle URL-encoded params
     if any(k in lower for k in ("tray_id=", "ingredient_id=", "id=", "barcode=")):
         for part in s.replace("?", "&").split("&"):
             if "=" not in part:
@@ -150,12 +162,14 @@ def extract_code(raw: str) -> str:
             if k.strip().lower() in {"tray_id", "ingredient_id", "id", "barcode"} and v.strip():
                 return v.strip()
 
-    idx = s.find(TRAY_PREFIX)
-    if idx != -1:
-        chunk = s[idx:idx + 64].split()[0]
-        for delim in ["&", "?", "#", "/", "\\", '"', "'", ",", ";", ")", "(", "]", "[", "}", "{"]:
-            chunk = chunk.split(delim)[0]
-        return chunk
+    # Handle embedded TRY- or BHN- inside a longer string
+    for prefix in (TRAY_PREFIX, BHN_PREFIX):
+        idx = s.find(prefix)
+        if idx != -1:
+            chunk = s[idx:idx + 64].split()[0]
+            for delim in ["&", "?", "#", "/", "\\", '"', "'", ",", ";", ")", "(", "]", "[", "}", "{"]:
+                chunk = chunk.split(delim)[0]
+            return chunk
 
     return s
 
@@ -176,27 +190,27 @@ def _exec_retry(fn):
             raise
     raise last_err
 
-def _log_error(conn, barcode: str, label: str, reason: str):
+def _log_error(conn, code: str, label: str, reason: str):
     when = now_str()
     _exec_retry(lambda: conn.execute(
         insert(scan_errors).values(
-            tray_id=barcode,  # ← Changed from barcode=
-            label=label, 
-            created_at=when, 
+            tray_id=code,
+            label=label,
+            created_at=when,
             reason=reason
         )
     ))
 
-def _log_success(conn, barcode: str, label: str, reason: str = None):
+def _log_success(conn, code: str, label: str, reason: str = None):
     when      = now_str()
     scan_date = datetime.now().strftime("%Y-%m-%d")
     _exec_retry(lambda: conn.execute(
         insert(scans).values(
-            tray_id=barcode,  # ← Changed from barcode=
-            status="SUKSES", 
+            tray_id=code,
+            status="SUKSES",
             label=label,
-            created_at=when, 
-            created_date=scan_date, 
+            created_at=when,
+            created_date=scan_date,
             reason=reason,
         )
     ))
@@ -208,10 +222,11 @@ def _tray_is_registered(conn, tray_id: str) -> bool:
     return row is not None
 
 
-def _latest_label(conn, barcode: str) -> str | None:
+def _latest_label(conn, code: str) -> str | None:
+    """Return the most recent pipeline label for a BHN or TRY code."""
     row = _exec_retry(lambda: conn.execute(
         select(scans.c.label)
-        .where(scans.c.tray_id == barcode)
+        .where(scans.c.tray_id == code)
         .order_by(scans.c.created_at.desc(), scans.c.id.desc())
         .limit(1)
     ).fetchone())
@@ -221,9 +236,15 @@ def _latest_label(conn, barcode: str) -> str | None:
 # ─────────────────────────── STEP VALIDATORS ─────────────────────────────────
 
 def validate_processing(conn, code: str) -> tuple[bool, str]:
-    """Ingredient must have been previously received (latest label == 'received')."""
+    """
+    Processing step validator.
+    - Code must be a BHN- ingredient code (not a tray).
+    - Ingredient must have been received (latest label in trays == "received").
+    """
     if not code:
         return False, "EMPTY_SCAN"
+    if not code.startswith(BHN_PREFIX):
+        return False, f"NOT_AN_INGREDIENT_CODE (expected BHN-, got: {code[:8]})"
     last = _latest_label(conn, code)
     if last != "received":
         return False, f"NOT_RECEIVED (latest={last})"
@@ -231,18 +252,28 @@ def validate_processing(conn, code: str) -> tuple[bool, str]:
 
 
 def validate_packing(conn, code: str) -> tuple[bool, str]:
-    """Tray must match TRY- format, correct length, and be registered."""
+    """
+    Packing step validator.
+    - Code must be a TRY- tray code with correct length.
+    - Tray must be registered in tray_items.
+    """
     if not code:
         return False, "EMPTY_SCAN"
-    if not code.startswith(TRAY_PREFIX) or len(code) != TRAY_LEN:
-        return False, "INVALID_TRAY_ID_FORMAT"
+    if not code.startswith(TRAY_PREFIX):
+        return False, f"NOT_A_TRAY_CODE (expected TRY-, got: {code[:8]})"
+    if len(code) != TRAY_LEN:
+        return False, f"INVALID_TRAY_ID_LENGTH (expected {TRAY_LEN}, got {len(code)})"
     if not _tray_is_registered(conn, code):
         return False, "TRAY_ID_NOT_REGISTERED"
     return True, ""
 
 
 def validate_delivery(conn, code: str) -> tuple[bool, str]:
-    """Tray must pass packing validation AND have latest label == 'packed'."""
+    """
+    Delivery step validator.
+    - Code must pass packing validation (TRY- format, registered).
+    - Tray must have latest label == "packed".
+    """
     ok, reason = validate_packing(conn, code)
     if not ok:
         return ok, reason
@@ -260,15 +291,14 @@ def run_scanner(
     failed_sound:  str = FAILED_SOUND,
 ):
     """
-    Main blocking scanner loop.  Reads barcodes from stdin, one per line.
+    Main blocking scanner loop. Reads barcodes from stdin, one per line.
 
     mode:
-      - "Processing"  → validates ingredient received; logs label 'processed'
-      - "Packing"     → validates tray registered;     logs label 'packed'
-      - "Delivery"    → validates tray packed;          logs label 'delivered'
+      - "Processing"  → scans BHN-xxxxx; validates label=="received";  writes label "processed"
+      - "Packing"     → scans TRY-xxxxx; validates tray registered;    writes label "packed"
+      - "Delivery"    → scans TRY-xxxxx; validates label=="packed";    writes label "delivered"
 
-    The db_path argument from common_old.py is removed; connection comes from
-    the SQLAlchemy engine configured via DATABASE_URL in .env.
+    Receiving is NOT handled here — use receiving.py (Streamlit form).
     """
     if mode not in ALLOWED_STEPS:
         raise ValueError(f"Invalid mode: {mode!r}. Must be one of: {sorted(ALLOWED_STEPS)}")
@@ -291,7 +321,6 @@ def run_scanner(
     last_time = 0.0
 
     with engine.connect() as conn:
-        # Use a single open transaction per scan to keep things atomic.
         for line in sys.stdin:
             raw  = line.strip()
             when = now_str()
