@@ -4,7 +4,7 @@ python-dotenv
 requests
 numpy
 Pillow
-sqlalchemy
+SQLAlchemy>=2.0.0
 opencv-python-headless
 pyzbar
 psycopg2-binary
