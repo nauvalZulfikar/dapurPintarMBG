@@ -3,7 +3,6 @@
 import os
 import sys
 import json
-import random
 import string
 import secrets
 from datetime import datetime
@@ -59,7 +58,7 @@ def generate_random_bhn_id(conn, length=6):
 # ============================================================
 
 st.set_page_config(page_title="Receiving", layout="centered")
-st.title("Receiving — New Container")
+st.title("Receiving – New Container")
 
 if "name" not in st.session_state:
     st.session_state.name = ""
@@ -84,7 +83,7 @@ with st.form("receiving_form"):
     submitted = st.form_submit_button("Submit & Print Sticker")
 
 # ============================================================
-# SAVE (ONLY TO items)
+# SAVE
 # ============================================================
 
 if submitted:
@@ -104,30 +103,49 @@ if submitted:
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }
 
+    now_iso = datetime.now().isoformat(timespec="seconds")
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
     try:
         with engine.begin() as conn:
-            # 1) Generate BHN ID from items table
+            # 1. Generate unique BHN ID
             bhn_id = generate_random_bhn_id(conn)
 
-            # 2) Insert into items table with label='received'
-            # NOTE: Requires items table to have columns: label, status, reason (as you mentioned), plus name/weight_grams/unit
+            # 2. Insert into items table (pure ingredient registry — no label/status here)
             conn.execute(
                 text("""
-                    INSERT INTO items (id, name, weight_grams, unit, label, status, reason)
-                    VALUES (:id, :name, :wg, :unit, :label, :status, :reason)
+                    INSERT INTO items (id, name, weight_grams, unit)
+                    VALUES (:id, :name, :wg, :unit)
                 """),
                 {
                     "id": bhn_id,
                     "name": name.strip(),
                     "wg": weight_g,
-                    "unit": "g",              # normalized
-                    "label": "received",
+                    "unit": "g",
+                }
+            )
+
+            # 3. Log the receiving scan event into trays table (pipeline state tracker)
+            #    This is what Processing step will validate against (latest label == "received").
+            conn.execute(
+                text("""
+                    INSERT INTO trays (tray_id, status, label, created_at, created_date, reason)
+                    VALUES (:tray_id, :status, :label, :created_at, :created_date, :reason)
+                """),
+                {
+                    "tray_id": bhn_id,
                     "status": "SUKSES",
+                    "label": "received",
+                    "created_at": now_iso,
+                    "created_date": today_str,
                     "reason": json.dumps(qc_payload, ensure_ascii=False),
                 }
             )
 
-        st.success(f"Saved: {bhn_id}")
+        st.success(f"✅ Saved: **{bhn_id}** — {name.strip()} ({weight_g}g)")
+        st.info("Print sticker with this ID and attach to the container.")
+
+        # TODO: enqueue print job here via db_enqueue_print() if needed
 
     except Exception as e:
         st.error(f"Error saving data: {e}")

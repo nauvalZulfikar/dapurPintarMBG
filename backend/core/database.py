@@ -33,6 +33,8 @@ metadata = MetaData()
 # ============================================================
 
 # --- Master entities (ingredients/items)
+# Pure registry: only stores what the ingredient IS, not where it is in the pipeline.
+# Pipeline state (received/processed/packed/delivered) is tracked in the trays table.
 items = Table(
     "items", metadata,
     Column("id", String, primary_key=True),   # BHN-xxxxx
@@ -50,17 +52,28 @@ tray_items = Table(
 )
 Index("ix_tray_items_tray", tray_items.c.tray_id)
 
-# --- Scan log table (MUST match scanner logic)
-# This table records every scan (ingredient codes in Receiving/Processing AND tray codes in Packing/Delivery)
+# --- Scan event log (single source of truth for pipeline state)
+#
+# STEP        | tray_id value | label written
+# ------------|---------------|---------------
+# Receiving   | BHN-xxxxx     | "received"
+# Processing  | BHN-xxxxx     | "processed"
+# Packing     | TRY-xxxxx     | "packed"
+# Delivery    | TRY-xxxxx     | "delivered"
+#
+# Validation rules (enforced in common.py / receiving.py):
+#   Processing  → requires latest label for BHN code == "received"
+#   Packing     → requires tray_id registered in tray_items
+#   Delivery    → requires latest label for TRY code == "packed"
 trays = Table(
     "trays", metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("tray_id", Text, nullable=False),         # scanned code (BHN-... or TRY-...)
     Column("status", Text, nullable=False),          # "SUKSES" / "GAGAL"
     Column("label", Text, nullable=False),           # "received" / "processed" / "packed" / "delivered"
-    Column("created_at", Text, nullable=False),      # ISO string (keep compatible with scanner/common.py)
+    Column("created_at", Text, nullable=False),      # ISO string
     Column("created_date", Text, nullable=False),    # YYYY-MM-DD string
-    Column("reason", Text, nullable=True),           # optional message
+    Column("reason", Text, nullable=True),           # optional message / QC payload
     UniqueConstraint("tray_id", "label", "created_date", name="uq_scans_code_label_day"),
 )
 Index("ix_trays_code", trays.c.tray_id)
@@ -72,7 +85,7 @@ print_jobs = Table(
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("tspl", Text, nullable=False),
     Column("created_at", DateTime, server_default=func.now()),
-    Column("printed", Integer, server_default=func.cast(0, Integer)),  # or just "0" if you want to keep simple
+    Column("printed", Integer, server_default=func.cast(0, Integer)),
     Column("printed_at", DateTime, nullable=True),
 )
 
@@ -87,14 +100,19 @@ def _today_str() -> str:
     return date.today().strftime("%Y-%m-%d")
 
 def _iso_now() -> str:
-    # use your existing helper (timezone-aware)
     return now_local_iso()
 
 # ---------- Items ----------
 def db_insert_item(item_id: str, name: str, weight_g: int, unit: str = "g"):
+    """Insert ingredient into items registry. Does NOT log the scan event — call db_log_scan separately."""
     with engine.begin() as c:
         if not c.execute(select(items.c.id).where(items.c.id == item_id)).first():
             c.execute(items.insert().values(id=item_id, name=name, weight_grams=weight_g, unit=unit))
+
+def db_item_exists(item_id: str) -> bool:
+    """Return True if item_id exists in the items registry."""
+    with engine.connect() as c:
+        return c.execute(select(items.c.id).where(items.c.id == item_id)).first() is not None
 
 # ---------- Tray registry ----------
 def db_register_tray(tray_id: str):
@@ -108,13 +126,16 @@ def db_is_tray_registered(tray_id: str) -> bool:
     with engine.connect() as c:
         return c.execute(select(tray_items.c.tray_id).where(tray_items.c.tray_id == tray_id)).first() is not None
 
-# ---------- Scan logging ----------
+# ---------- Scan event log ----------
 def db_log_scan(code: str, label: str, status: str = "SUKSES", reason: Optional[str] = None,
                 created_at_iso: Optional[str] = None, created_date: Optional[str] = None) -> int:
     """
-    Insert one scan row into trays table.
-    - code can be BHN-... or TRY-...
-    - label: received/processed/packed/delivered
+    Insert one scan event row into trays table.
+
+    - code:   BHN-xxxxx (for receiving/processing) or TRY-xxxxx (for packing/delivery)
+    - label:  "received" / "processed" / "packed" / "delivered"
+    - status: "SUKSES" / "GAGAL"
+    - reason: optional QC payload or error reason
     """
     created_at_iso = created_at_iso or _iso_now()
     created_date = created_date or _today_str()
@@ -134,7 +155,7 @@ def db_log_scan(code: str, label: str, status: str = "SUKSES", reason: Optional[
         return int(pk[0]) if pk and pk[0] is not None else -1
 
 def db_get_latest_label(code: str) -> Optional[str]:
-    """Return latest label for a given code (BHN/TRY)."""
+    """Return the latest pipeline label for a given code (BHN or TRY)."""
     with engine.connect() as c:
         row = c.execute(
             select(trays.c.label)
