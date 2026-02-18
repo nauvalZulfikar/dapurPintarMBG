@@ -28,7 +28,7 @@ def render_delivery_assignments():
                 })
             
             assignments_df = pd.DataFrame(assignments_list)
-            st.dataframe(assignments_df, use_container_width=True)
+            st.dataframe(assignments_df, width=True)
         else:
             st.info("No assignments available.")
     except Exception as e:

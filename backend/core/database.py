@@ -1,27 +1,38 @@
+# DPMBG_Project/backend/core/database.py
 import os
 import json
-from datetime import datetime
+from datetime import date
 from typing import Optional, Tuple
-from backend.utils.datetime_helpers import now_local_iso
-from sqlalchemy.ext.declarative import declarative_base
 
-# ---------- DB (SQLAlchemy) ----------
+from backend.utils.datetime_helpers import now_local_iso
+
 from sqlalchemy import (
     create_engine, MetaData, Table, Column, Integer, String, Text, DateTime,
-    Index, select, func, ForeignKey
+    Index, select, func, UniqueConstraint, insert
 )
-from sqlalchemy.exc import IntegrityError
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'scans.db')}")
+# ============================================================
+# DB (SQLAlchemy)
+# ============================================================
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"sqlite:///{os.path.join(BASE_DIR, 'scans.db')}"
+)
+
 engine_kwargs = {"future": True, "pool_pre_ping": True}
 if DATABASE_URL.startswith("sqlite:///"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
+
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 metadata = MetaData()
 
+# ============================================================
+# TABLES
+# ============================================================
 
-# --- Master entities
+# --- Master entities (ingredients/items)
 items = Table(
     "items", metadata,
     Column("id", String, primary_key=True),   # BHN-xxxxx
@@ -30,204 +41,132 @@ items = Table(
     Column("unit", String),
     Column("created_at", DateTime, server_default=func.now()),
 )
-trays = Table(
-    "trays", metadata,
-    Column("id", String, ForeignKey("tray_items.id"), primary_key=True),   # TRY-xxxxx
-    Column("created_at", DateTime, server_default=func.now()),
-)
+
+# --- Tray registry (allowed trays for Packing step)
 tray_items = Table(
     "tray_items", metadata,
-    Column("id", Integer, primary_key=True),
-    Column("tray_id", String),#, ForeignKey("trays.id")),
-    # Column("item_id", String),#, ForeignKey("items.id")),
-    # Column("bound_by_number", String),
-    # Column("bound_at", DateTime, server_default=func.now()),
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("tray_id", String, nullable=False, unique=True),  # TRY-xxxxx
 )
 Index("ix_tray_items_tray", tray_items.c.tray_id)
 
-# --- Event log
-events = Table(
-    "events", metadata,
-    Column("id", Integer, primary_key=True),
-    Column("ts_local", String, nullable=False),
-    Column("from_number", String),
-    Column("division", String),      # receiving/processing/packing/delivery/school_receipt
-    Column("subject_type", String),  # item | tray
-    Column("subject_id", String),    # BHN-xxxxx | TRY-xxxxx
-    Column("message_text", Text),
-    Column("duration_hms", String),  # HH:MM:SS
-    Column("duration_seconds", Integer),
-    Column("extra", Text),
-    Column("created_at", DateTime, server_default=func.now()),
+# --- Scan log table (MUST match scanner logic)
+# This table records every scan (ingredient codes in Receiving/Processing AND tray codes in Packing/Delivery)
+trays = Table(
+    "trays", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("tray_id", Text, nullable=False),         # scanned code (BHN-... or TRY-...)
+    Column("status", Text, nullable=False),          # "SUKSES" / "GAGAL"
+    Column("label", Text, nullable=False),           # "received" / "processed" / "packed" / "delivered"
+    Column("created_at", Text, nullable=False),      # ISO string (keep compatible with scanner/common.py)
+    Column("created_date", Text, nullable=False),    # YYYY-MM-DD string
+    Column("reason", Text, nullable=True),           # optional message
+    UniqueConstraint("tray_id", "label", "created_date", name="uq_scans_code_label_day"),
 )
-Index("ix_events_subject", events.c.subject_type, events.c.subject_id)
+Index("ix_trays_code", trays.c.tray_id)
+Index("ix_trays_label_date", trays.c.label, trays.c.created_date)
 
-# --- Staff & onboarding
-staffs = Table(
-    "staffs", metadata,
-    Column("phone", String, primary_key=True),  # E.164 without '+'
-    Column("name", String, nullable=False),
-    Column("division", String, nullable=False), # receiving/processing/packing/delivery/school_receipt
-    Column("created_at", DateTime, server_default=func.now()),
-)
-registrations = Table(
-    "registrations", metadata,
-    Column("phone", String, primary_key=True),
-    Column("state", String),       # ask_name | ask_division
-    Column("temp_name", String),
-    Column("created_at", DateTime, server_default=func.now()),
-)
-
-# --- Inbound idempotency (kill WA duplicate deliveries)
-inbound_seen = Table(
-    "inbound_seen", metadata,
-    Column("id", String, primary_key=True),   # WhatsApp message.id
-    Column("created_at", DateTime, server_default=func.now()),
-)
-
-# --- Print jobs (queue for mini PC polling) ---
+# --- Print jobs (queue for mini PC polling)
 print_jobs = Table(
     "print_jobs", metadata,
-    Column("id", Integer, primary_key=True),
+    Column("id", Integer, primary_key=True, autoincrement=True),
     Column("tspl", Text, nullable=False),
     Column("created_at", DateTime, server_default=func.now()),
-    Column("printed", Integer, server_default="0"),  # 0 = pending, 1 = printed
+    Column("printed", Integer, server_default=func.cast(0, Integer)),  # or just "0" if you want to keep simple
     Column("printed_at", DateTime, nullable=True),
 )
 
+# Create tables
 metadata.create_all(engine)
 
+# ============================================================
+# HELPERS
+# ============================================================
 
-# ---------- DB helpers ----------
-def db_get_staff(phone: str) -> Optional[dict]:
-    with engine.connect() as c:
-        row = c.execute(select(staffs).where(staffs.c.phone == phone).limit(1)).first()
-        return dict(row._mapping) if row else None
+def _today_str() -> str:
+    return date.today().strftime("%Y-%m-%d")
 
-def db_set_staff(phone: str, name: str, division: str):
-    with engine.begin() as c:
-        if c.execute(select(staffs.c.phone).where(staffs.c.phone == phone)).first():
-            c.execute(staffs.update().where(staffs.c.phone == phone).values(name=name, division=division))
-        else:
-            c.execute(staffs.insert().values(phone=phone, name=name, division=division))
+def _iso_now() -> str:
+    # use your existing helper (timezone-aware)
+    return now_local_iso()
 
-def db_get_reg(phone: str) -> Optional[dict]:
-    with engine.connect() as c:
-        row = c.execute(select(registrations).where(registrations.c.phone == phone)).first()
-        return dict(row._mapping) if row else None
-
-def db_set_reg(phone: str, state: str, temp_name: Optional[str] = None):
-    with engine.begin() as c:
-        if c.execute(select(registrations.c.phone).where(registrations.c.phone == phone)).first():
-            c.execute(
-                registrations.update()
-                .where(registrations.c.phone == phone)
-                .values(state=state, temp_name=temp_name)
-            )
-        else:
-            c.execute(
-                registrations.insert().values(phone=phone, state=state, temp_name=temp_name)
-            )
-
-def db_clear_reg(phone: str):
-    with engine.begin() as c:
-        c.execute(registrations.delete().where(registrations.c.phone == phone))
-
+# ---------- Items ----------
 def db_insert_item(item_id: str, name: str, weight_g: int, unit: str = "g"):
     with engine.begin() as c:
         if not c.execute(select(items.c.id).where(items.c.id == item_id)).first():
-            c.execute(
-                items.insert().values(id=item_id, name=name, weight_grams=weight_g, unit=unit)
-            )
+            c.execute(items.insert().values(id=item_id, name=name, weight_grams=weight_g, unit=unit))
 
-def db_insert_tray_if_needed(tray_id: str):
+# ---------- Tray registry ----------
+def db_register_tray(tray_id: str):
+    """Add tray_id into tray_items registry if not exists."""
     with engine.begin() as c:
-        if not c.execute(select(trays.c.id).where(trays.c.id == tray_id)).first():
-            c.execute(trays.insert().values(id=tray_id))
+        if not c.execute(select(tray_items.c.tray_id).where(tray_items.c.tray_id == tray_id)).first():
+            c.execute(tray_items.insert().values(tray_id=tray_id))
 
-def db_last_event(subject_type: str, subject_id: str, division: Optional[str] = None):
+def db_is_tray_registered(tray_id: str) -> bool:
+    """Return True if tray_id exists in tray_items registry."""
     with engine.connect() as c:
-        stmt = select(events).where(
-            events.c.subject_type == subject_type,
-            events.c.subject_id == subject_id,
+        return c.execute(select(tray_items.c.tray_id).where(tray_items.c.tray_id == tray_id)).first() is not None
+
+# ---------- Scan logging ----------
+def db_log_scan(code: str, label: str, status: str = "SUKSES", reason: Optional[str] = None,
+                created_at_iso: Optional[str] = None, created_date: Optional[str] = None) -> int:
+    """
+    Insert one scan row into trays table.
+    - code can be BHN-... or TRY-...
+    - label: received/processed/packed/delivered
+    """
+    created_at_iso = created_at_iso or _iso_now()
+    created_date = created_date or _today_str()
+
+    with engine.begin() as c:
+        res = c.execute(
+            insert(trays).values(
+                tray_id=code,
+                status=status,
+                label=label,
+                created_at=created_at_iso,
+                created_date=created_date,
+                reason=reason
+            )
         )
-        if division:
-            stmt = stmt.where(events.c.division == division)
-        stmt = stmt.order_by(events.c.id.desc()).limit(1)
-        row = c.execute(stmt).first()
+        pk = res.inserted_primary_key
+        return int(pk[0]) if pk and pk[0] is not None else -1
+
+def db_get_latest_label(code: str) -> Optional[str]:
+    """Return latest label for a given code (BHN/TRY)."""
+    with engine.connect() as c:
+        row = c.execute(
+            select(trays.c.label)
+            .where(trays.c.tray_id == code)
+            .order_by(trays.c.id.desc())
+            .limit(1)
+        ).first()
+        return row[0] if row else None
+
+# ---------- Print jobs ----------
+def db_enqueue_print(tspl: str) -> int:
+    """Insert print job, return job id."""
+    with engine.begin() as c:
+        res = c.execute(print_jobs.insert().values(tspl=tspl))
+        pk = res.inserted_primary_key
+        return int(pk[0]) if pk and pk[0] is not None else -1
+
+def db_fetch_next_print_job() -> Optional[dict]:
+    """Fetch one pending job (printed=0)."""
+    with engine.connect() as c:
+        row = c.execute(
+            select(print_jobs)
+            .where(print_jobs.c.printed == 0)
+            .order_by(print_jobs.c.id.asc())
+            .limit(1)
+        ).first()
         return dict(row._mapping) if row else None
 
-def db_insert_event(
-    ts_local: str,
-    phone: str,
-    division: str,
-    subject_type: str,
-    subject_id: str,
-    message_text: str,
-    duration_hms: str,
-    duration_sec: int,
-    extra: dict,
-):
+def db_mark_printed(job_id: int):
     with engine.begin() as c:
         c.execute(
-            events.insert().values(
-                ts_local=ts_local,
-                from_number=phone,
-                division=division,
-                subject_type=subject_type,
-                subject_id=subject_id,
-                message_text=message_text,
-                duration_hms=duration_hms,
-                duration_seconds=duration_sec,
-                extra=json.dumps(extra or {}),
-            )
+            print_jobs.update()
+            .where(print_jobs.c.id == job_id)
+            .values(printed=1, printed_at=func.now())
         )
-
-def db_recent_processed_item(phone: str, window_min: int = 10) -> Optional[Tuple[str, str]]:
-    now_iso = now_local_iso()
-    with engine.connect() as c:
-        ev = (
-            c.execute(
-                select(events.c.subject_id, events.c.ts_local)
-                .where(
-                    events.c.division == "processing",
-                    events.c.from_number == phone,
-                    events.c.subject_type == "item",
-                )
-                .order_by(events.c.id.desc())
-                .limit(1)
-            )
-            .first()
-        )
-    if not ev:
-        return None
-    item_id, ts = ev
-    try:
-        d = datetime.fromisoformat(now_iso) - datetime.fromisoformat(ts)
-        if d.total_seconds() > window_min * 60:
-            return None
-    except Exception:
-        pass
-    return (item_id, ts)
-
-def mark_inbound_seen(mid: Optional[str]) -> bool:
-    """Return True if this message-id was seen before (so caller should skip)."""
-    if not mid:
-        return False
-    with engine.begin() as c:
-        if c.execute(select(inbound_seen.c.id).where(inbound_seen.c.id == mid)).first():
-            return True
-        c.execute(inbound_seen.insert().values(id=mid))
-        return False
-
-Base = declarative_base()
-
-# --- NEW: model the events table (this is where packing scans are logged) ---
-class Event(Base):
-    __tablename__ = "events"
-
-    id = Column(Integer, primary_key=True)
-    ts_local = Column(String)          # stored as ISO string in your app
-    division = Column(String)
-    subject_type = Column(String)
-    subject_id = Column(String)

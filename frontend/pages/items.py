@@ -20,6 +20,6 @@ def render_items_tab(items: pd.DataFrame):
                 .astype(str)
                 .str.contains(item_name_filter, case=False, na=False)
             ]
-        st.dataframe(df_items, use_container_width=True)
+        st.dataframe(df_items, width=True)
     else:
         st.info("No items in database.")

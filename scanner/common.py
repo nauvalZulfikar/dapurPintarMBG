@@ -54,24 +54,23 @@ tray_items = Table(
 scans = Table(
     "trays", metadata,
     Column("id",         Integer, primary_key=True, autoincrement=True),
-    Column("barcode",    Text,    nullable=False),
+    Column("tray_id",    Text,    nullable=False),
     Column("status",     Text,    nullable=False),
     Column("label",      Text,    nullable=False),
     Column("created_at", Text,    nullable=False),
     Column("created_date",  Text,    nullable=False),
     Column("reason",     Text),
-    UniqueConstraint("barcode", "label", "created_date", name="uq_scans_barcode_label_day"),
+    UniqueConstraint("tray_id", "label", "created_date", name="uq_scans_barcode_label_day"),
 )
 
 scan_errors = Table(
     "scan_errors", metadata,
     Column("id",         Integer, primary_key=True, autoincrement=True),
-    Column("barcode",    Text),
+    Column("tray_id",    Text),
     Column("label",      Text,    nullable=False),
     Column("created_at", Text,    nullable=False),
     Column("reason",     Text,    nullable=False),
 )
-
 
 def create_tables():
     """Create all tables (safe to call repeatedly; uses CREATE IF NOT EXISTS)."""
@@ -80,8 +79,8 @@ def create_tables():
 
 # ─────────────────────────── DEFAULT CONFIG ──────────────────────────────────
 
-SUCCESS_SOUND    = "./SUCCESS.mp3"
-FAILED_SOUND     = "./FAILED.mp3"
+SUCCESS_SOUND    = "scanner/SUCCESS.mp3"
+FAILED_SOUND     = "scanner/FAILED.mp3"
 DEBOUNCE_SECONDS = 0.7
 DB_LOCK_RETRIES  = 6
 DB_LOCK_SLEEP    = 0.15
@@ -177,24 +176,30 @@ def _exec_retry(fn):
             raise
     raise last_err
 
-
 def _log_error(conn, barcode: str, label: str, reason: str):
     when = now_str()
     _exec_retry(lambda: conn.execute(
-        insert(scan_errors).values(barcode=barcode, label=label, created_at=when, reason=reason)
+        insert(scan_errors).values(
+            tray_id=barcode,  # ← Changed from barcode=
+            label=label, 
+            created_at=when, 
+            reason=reason
+        )
     ))
-
 
 def _log_success(conn, barcode: str, label: str, reason: str = None):
     when      = now_str()
     scan_date = datetime.now().strftime("%Y-%m-%d")
     _exec_retry(lambda: conn.execute(
         insert(scans).values(
-            barcode=barcode, status="SUKSES", label=label,
-            created_at=when, created_date=scan_date, reason=reason,
+            tray_id=barcode,  # ← Changed from barcode=
+            status="SUKSES", 
+            label=label,
+            created_at=when, 
+            created_date=scan_date, 
+            reason=reason,
         )
     ))
-
 
 def _tray_is_registered(conn, tray_id: str) -> bool:
     row = _exec_retry(lambda: conn.execute(
@@ -206,7 +211,7 @@ def _tray_is_registered(conn, tray_id: str) -> bool:
 def _latest_label(conn, barcode: str) -> str | None:
     row = _exec_retry(lambda: conn.execute(
         select(scans.c.label)
-        .where(scans.c.barcode == barcode)
+        .where(scans.c.tray_id == barcode)
         .order_by(scans.c.created_at.desc(), scans.c.id.desc())
         .limit(1)
     ).fetchone())
