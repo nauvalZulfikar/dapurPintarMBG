@@ -6,9 +6,9 @@ Scanner business logic for Processing, Packing, Delivery.
 
 Flow:
   1. Scan barcode
-  2. Validate against Supabase directly (simple label check)
+  2. Validate against Supabase directly (check boolean pipeline columns)
   3. Write result to local SQLite queue immediately
-  4. Background thread (syncer.py) pushes local → Supabase every 60s, then deletes synced rows
+  4. Background thread (syncer.py) pushes local -> Supabase every 60s, then deletes synced rows
 """
 
 import os
@@ -118,34 +118,37 @@ def _exec_retry(fn):
     raise last_err
 
 # ─────────────────────────── VALIDATORS ──────────────────────────────────────
-# Validators query Supabase directly — just a quick label check.
-# If Supabase is unreachable, validation fails with a clear error.
 
-def _get_remote_item_label(code: str) -> Optional[str]:
+def _get_remote_item(code: str):
+    """Fetch receiving + processing booleans for a BHN code."""
     if not remote_engine:
         return None
     with remote_engine.connect() as c:
-        row = c.execute(
-            select(remote_items.c.label).where(remote_items.c.id == code)
+        return c.execute(
+            select(remote_items.c.receiving, remote_items.c.processing)
+            .where(remote_items.c.id == code)
         ).first()
-        return row[0] if row else None
 
-def _get_remote_tray_label(tray_id: str) -> Optional[str]:
+def _get_remote_tray(tray_id: str):
+    """Fetch packing + delivery booleans for a TRY code."""
     if not remote_engine:
         return None
     with remote_engine.connect() as c:
-        row = c.execute(
-            select(remote_trays.c.label).where(remote_trays.c.tray_id == tray_id)
+        return c.execute(
+            select(remote_trays.c.packing, remote_trays.c.delivery)
+            .where(remote_trays.c.tray_id == tray_id)
         ).first()
-        return row[0] if row else None
 
 def _is_remote_tray_registered(tray_id: str) -> bool:
+    """Check tray_items table to see if tray is registered."""
     if not remote_engine:
         return False
     with remote_engine.connect() as c:
         return c.execute(
-            select(remote_tray_items.c.tray_id).where(remote_tray_items.c.tray_id == tray_id)
+            select(remote_tray_items.c.tray_id)
+            .where(remote_tray_items.c.tray_id == tray_id)
         ).first() is not None
+
 
 def validate_processing(code: str) -> tuple[bool, str]:
     if not code:
@@ -153,13 +156,15 @@ def validate_processing(code: str) -> tuple[bool, str]:
     if not code.startswith(BHN_PREFIX):
         return False, f"NOT_AN_INGREDIENT_CODE (expected BHN-, got: {code[:8]})"
     try:
-        label = _get_remote_item_label(code)
+        row = _get_remote_item(code)
     except Exception as e:
         return False, f"SUPABASE_UNREACHABLE: {e}"
-    if label is None:
+    if row is None:
         return False, "INGREDIENT_NOT_FOUND"
-    if label != "received":
-        return False, f"NOT_RECEIVED (current label={label})"
+    if not row.receiving:
+        return False, "NOT_RECEIVED"
+    if row.processing:
+        return False, "ALREADY_PROCESSED"
     return True, ""
 
 
@@ -172,13 +177,13 @@ def validate_packing(code: str) -> tuple[bool, str]:
         return False, f"INVALID_TRAY_ID_LENGTH (expected {TRAY_LEN}, got {len(code)})"
     try:
         registered = _is_remote_tray_registered(code)
-        label = _get_remote_tray_label(code)
+        row = _get_remote_tray(code)
     except Exception as e:
         return False, f"SUPABASE_UNREACHABLE: {e}"
     if not registered:
         return False, "TRAY_NOT_REGISTERED"
-    if label in ("packed", "delivered"):
-        return False, f"ALREADY_{label.upper()}"
+    if row and row.packing:
+        return False, "ALREADY_PACKED"
     return True, ""
 
 
@@ -191,13 +196,15 @@ def validate_delivery(code: str) -> tuple[bool, str]:
         return False, f"INVALID_TRAY_ID_LENGTH (expected {TRAY_LEN}, got {len(code)})"
     try:
         registered = _is_remote_tray_registered(code)
-        label = _get_remote_tray_label(code)
+        row = _get_remote_tray(code)
     except Exception as e:
         return False, f"SUPABASE_UNREACHABLE: {e}"
     if not registered:
         return False, "TRAY_NOT_REGISTERED"
-    if label != "packed":
-        return False, f"NOT_PACKED (current label={label})"
+    if not row or not row.packing:
+        return False, "NOT_PACKED"
+    if row.delivery:
+        return False, "ALREADY_DELIVERED"
     return True, ""
 
 
@@ -208,27 +215,16 @@ def run_scanner(
     success_sound: str = SUCCESS_SOUND,
     failed_sound:  str = FAILED_SOUND,
 ):
-    """
-    Main blocking scanner loop. Reads barcodes from stdin, one per line.
-
-    mode:
-      "Processing" → validates BHN in Supabase → stores locally → syncer updates Supabase label
-      "Packing"    → validates TRY in Supabase  → stores locally → syncer updates Supabase label
-      "Delivery"   → validates TRY in Supabase  → stores locally → syncer updates Supabase label
-    """
     if mode not in ALLOWED_STEPS:
         raise ValueError(f"Invalid mode: {mode!r}. Must be one of: {sorted(ALLOWED_STEPS)}")
 
     write_label = {"Processing": "processed", "Packing": "packed", "Delivery": "delivered"}[mode]
 
-    sys.stdout.write(f"=== SCANNER MODE: {mode.upper()} (writes label='{write_label}') ===\n")
+    sys.stdout.write(f"=== SCANNER MODE: {mode.upper()} ===\n")
     sys.stdout.write("Scan now...\n\n")
     sys.stdout.flush()
 
-    # Init local SQLite tables
     init_db()
-
-    # Start background sync thread
     start_sync_thread()
 
     validators = {
@@ -245,7 +241,6 @@ def run_scanner(
         when = now_str()
         code = extract_code(raw)
 
-        # debounce
         t = time.time()
         if code and code == last_code and (t - last_time) < DEBOUNCE_SECONDS:
             continue
@@ -260,9 +255,7 @@ def run_scanner(
                 print_status(False, when, reason)
                 continue
 
-            # Write to local SQLite immediately
             _exec_retry(lambda: local_enqueue_scan(code, mode, write_label))
-
             play_sound(success_sound)
             print_status(True, when)
 
