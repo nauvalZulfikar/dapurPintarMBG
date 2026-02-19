@@ -14,7 +14,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-from backend.core.database import engine
+from backend.core.database import engine, db_insert_item
 
 # ============================================================
 # SETTINGS
@@ -26,11 +26,6 @@ CHECKLIST_ITEMS = [
     "Temperature OK",
     "Cleanliness OK",
 ]
-
-# ============================================================
-# DEBUG — remove after confirming DATABASE_URL is correct on Render
-# ============================================================
-st.write("DATABASE_URL:", os.getenv("DATABASE_URL", "NOT SET"))
 
 # ============================================================
 # HELPERS
@@ -94,23 +89,15 @@ if submitted:
         with engine.begin() as conn:
             bhn_id = generate_random_bhn_id(conn)
 
-            # Note: using raw SQL directly instead of db_insert_item()
-            # because Render is caching an old version of database.py
-            # that doesn't have the 'reason' parameter yet.
-            # TODO: switch back to db_insert_item() once Render cache issue is resolved.
-            conn.execute(
-                text("""
-                    INSERT INTO items (id, name, weight_grams, unit, label, status, reason)
-                    VALUES (:id, :name, :wg, :unit, 'received', 'SUKSES', :reason)
-                """),
-                {
-                    "id": bhn_id,
-                    "name": name.strip(),
-                    "wg": weight_g,
-                    "unit": "g",
-                    "reason": json.dumps(qc_payload, ensure_ascii=False),
-                }
-            )
+        # Insert into items with label="received"
+        # reason stores the QC checklist payload
+        db_insert_item(
+            item_id=bhn_id,
+            name=name.strip(),
+            weight_g=weight_g,
+            unit="g",
+            reason=json.dumps(qc_payload, ensure_ascii=False),
+        )
 
         st.success(f"✅ Saved: **{bhn_id}** — {name.strip()} ({weight_g}g)")
         st.info("Print sticker with this ID and attach to the container.")
