@@ -9,6 +9,10 @@ from datetime import datetime
 
 import streamlit as st
 from sqlalchemy import text
+import backend.core.database as _db
+import inspect
+st.write("PATH:", _db.__file__)
+st.write("SIGNATURE:", str(inspect.signature(_db.db_insert_item)))
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
