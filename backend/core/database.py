@@ -102,7 +102,7 @@ def _today_str() -> str:
 
 # ---------- Items (BHN) ----------
 
-def db_insert_item(item_id: str, name: str, weight_g: int, unit: str = "g", reason: Optional[str] = None) -> None:
+def db_insert_item(item_id: str, name: str, weight_g: int, unit: str = "g", reason: Optional[str] = None):
     """Insert a new ingredient into items with label='received'."""
     with engine.begin() as c:
         c.execute(items.insert().values(
