@@ -15,16 +15,25 @@ from sqlalchemy import (
 # ============================================================
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    f"sqlite:///{os.path.join(BASE_DIR, 'scans.db')}"
-)
+# ============================================================
+# STREAMLIT SECRETS BRIDGE
+# Must run before os.getenv("DATABASE_URL") so Streamlit Cloud
+# secrets are available as environment variables.
+# ============================================================
+try:
+    import streamlit as st
+    db_url = st.secrets.get("DATABASE_URL")
+    if db_url:
+        os.environ["DATABASE_URL"] = db_url
+except Exception:
+    pass
+
 
 engine_kwargs = {"future": True, "pool_pre_ping": True}
-if DATABASE_URL.startswith("sqlite:///"):
+if db_url.startswith("sqlite:///"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
 
-engine = create_engine(DATABASE_URL, **engine_kwargs)
+engine = create_engine(db_url, **engine_kwargs)
 metadata = MetaData()
 
 # ============================================================
