@@ -7,7 +7,7 @@ from backend.utils.datetime_helpers import now_local_iso
 
 from sqlalchemy import (
     create_engine, MetaData, Table, Column, Integer, String, Text, DateTime,
-    Index, select, func, UniqueConstraint, insert
+    Index, select, func, UniqueConstraint, insert, update
 )
 
 # ============================================================
@@ -31,62 +31,51 @@ metadata = MetaData()
 # TABLES
 # ============================================================
 
-# --- Ingredient registry
-# Stores what an ingredient IS (name, weight). Pipeline state is in trays.
+# --- Ingredient table (BHN-xxxxx)
+# Stores what the ingredient IS and where it is in the ingredient pipeline.
+#
+# label progression: "received" → "processed"
+# status: "SUKSES" / "GAGAL"
 items = Table(
     "items", metadata,
-    Column("id", String, primary_key=True),          # BHN-xxxxx
-    Column("name", String),
-    Column("weight_grams", Integer),
-    Column("unit", String),
+    Column("id", String, primary_key=True),              # BHN-xxxxx
+    Column("name", String, nullable=False),
+    Column("weight_grams", Integer, nullable=False),
+    Column("unit", String, nullable=False),
+    Column("label", String, nullable=False, server_default="received"),   # "received" / "processed"
+    Column("status", String, nullable=False, server_default="SUKSES"),    # "SUKSES" / "GAGAL"
+    Column("reason", Text, nullable=True),                                # QC payload or error
     Column("created_at", DateTime, server_default=func.now()),
+    Column("updated_at", DateTime, server_default=func.now(), onupdate=func.now()),
 )
 
-# --- Tray registry (allowed trays for Packing step)
-tray_items = Table(
-    "tray_items", metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("tray_id", String, nullable=False, unique=True),  # TRY-xxxxx
-)
-Index("ix_tray_items_tray", tray_items.c.tray_id)
-
-# --- Scan event log (single source of truth for pipeline state)
+# --- Tray registry + pipeline table (TRY-xxxxx)
+# Stores which trays exist and where they are in the tray pipeline.
 #
-# STEP        | tray_id value | label written
-# ------------|---------------|---------------
-# Receiving   | BHN-xxxxx     | "received"
-# Processing  | BHN-xxxxx     | "processed"
-# Packing     | TRY-xxxxx     | "packed"
-# Delivery    | TRY-xxxxx     | "delivered"
-#
-# Validation rules:
-#   Processing → latest label for BHN code must be "received"
-#   Packing    → tray_id must be registered in tray_items
-#   Delivery   → latest label for TRY code must be "packed"
+# label progression: "packed" → "delivered"
+# status: "SUKSES" / "GAGAL"
 trays = Table(
     "trays", metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("tray_id", Text, nullable=False),
-    Column("status", Text, nullable=False),          # "SUKSES" / "GAGAL"
-    Column("label", Text, nullable=False),           # "received" / "processed" / "packed" / "delivered"
-    Column("created_at", Text, nullable=False),      # ISO datetime string
-    Column("created_date", Text, nullable=False),    # YYYY-MM-DD string
+    Column("tray_id", String, nullable=False, unique=True),              # TRY-xxxxx
+    Column("label", String, nullable=True),                              # "packed" / "delivered" / None if not yet packed
+    Column("status", String, nullable=True),                             # "SUKSES" / "GAGAL"
     Column("reason", Text, nullable=True),
-    UniqueConstraint("tray_id", "label", "created_date", name="uq_scans_code_label_day"),
+    Column("created_at", DateTime, server_default=func.now()),
+    Column("updated_at", DateTime, server_default=func.now(), onupdate=func.now()),
 )
-Index("ix_trays_code", trays.c.tray_id)
-Index("ix_trays_label_date", trays.c.label, trays.c.created_date)
+Index("ix_trays_tray_id", trays.c.tray_id)
 
-# --- Scan error log (failed scans from all scanner steps)
+# --- Scan error log (failed scans from all steps)
 scan_errors = Table(
     "scan_errors", metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("tray_id", Text),
-    Column("label", Text, nullable=False),
+    Column("code", Text),                    # BHN-xxxxx or TRY-xxxxx
+    Column("step", Text, nullable=False),    # "Processing" / "Packing" / "Delivery"
     Column("created_at", Text, nullable=False),
     Column("reason", Text, nullable=False),
 )
-Index("ix_scan_errors_code", scan_errors.c.tray_id)
+Index("ix_scan_errors_code", scan_errors.c.code)
 
 # --- Print jobs (queue for mini PC polling)
 print_jobs = Table(
@@ -105,97 +94,94 @@ metadata.create_all(engine)
 # HELPERS
 # ============================================================
 
-def _today_str() -> str:
-    return date.today().strftime("%Y-%m-%d")
-
 def _iso_now() -> str:
     return now_local_iso()
 
-# ---------- Items ----------
-def db_insert_item(item_id: str, name: str, weight_g: int, unit: str = "g"):
-    """Insert ingredient into items registry. Does NOT log the scan event — call db_log_scan separately."""
+def _today_str() -> str:
+    return date.today().strftime("%Y-%m-%d")
+
+# ---------- Items (BHN) ----------
+
+def db_insert_item(item_id: str, name: str, weight_g: int, unit: str = "g", reason: Optional[str] = None) -> None:
+    """Insert a new ingredient into items with label='received'."""
     with engine.begin() as c:
-        if not c.execute(select(items.c.id).where(items.c.id == item_id)).first():
-            c.execute(items.insert().values(id=item_id, name=name, weight_grams=weight_g, unit=unit))
+        c.execute(items.insert().values(
+            id=item_id,
+            name=name,
+            weight_grams=weight_g,
+            unit=unit,
+            label="received",
+            status="SUKSES",
+            reason=reason,
+        ))
 
 def db_item_exists(item_id: str) -> bool:
-    """Return True if item_id exists in the items registry."""
     with engine.connect() as c:
         return c.execute(select(items.c.id).where(items.c.id == item_id)).first() is not None
 
-# ---------- Tray registry ----------
-def db_register_tray(tray_id: str):
-    """Add tray_id into tray_items registry if not exists."""
-    with engine.begin() as c:
-        if not c.execute(select(tray_items.c.tray_id).where(tray_items.c.tray_id == tray_id)).first():
-            c.execute(tray_items.insert().values(tray_id=tray_id))
-
-def db_is_tray_registered(tray_id: str) -> bool:
-    """Return True if tray_id exists in tray_items registry."""
+def db_get_item_label(item_id: str) -> Optional[str]:
+    """Return current label for a BHN ingredient."""
     with engine.connect() as c:
-        return c.execute(select(tray_items.c.tray_id).where(tray_items.c.tray_id == tray_id)).first() is not None
-
-# ---------- Scan event log ----------
-def db_log_scan(code: str, label: str, status: str = "SUKSES", reason: Optional[str] = None,
-                created_at_iso: Optional[str] = None, created_date: Optional[str] = None) -> int:
-    """
-    Insert one scan event row into trays table.
-
-    - code:   BHN-xxxxx (receiving/processing) or TRY-xxxxx (packing/delivery)
-    - label:  "received" / "processed" / "packed" / "delivered"
-    - status: "SUKSES" / "GAGAL"
-    - reason: optional QC payload or error message
-    """
-    created_at_iso = created_at_iso or _iso_now()
-    created_date = created_date or _today_str()
-
-    with engine.begin() as c:
-        res = c.execute(
-            insert(trays).values(
-                tray_id=code,
-                status=status,
-                label=label,
-                created_at=created_at_iso,
-                created_date=created_date,
-                reason=reason
-            )
-        )
-        pk = res.inserted_primary_key
-        return int(pk[0]) if pk and pk[0] is not None else -1
-
-def db_get_latest_label(code: str) -> Optional[str]:
-    """Return the latest pipeline label for a given code (BHN or TRY)."""
-    with engine.connect() as c:
-        row = c.execute(
-            select(trays.c.label)
-            .where(trays.c.tray_id == code)
-            .order_by(trays.c.id.desc())
-            .limit(1)
-        ).first()
+        row = c.execute(select(items.c.label).where(items.c.id == item_id)).first()
         return row[0] if row else None
 
-def db_log_scan_error(code: str, label: str, reason: str):
-    """Insert a failed scan into the scan_errors log."""
+def db_update_item_label(item_id: str, label: str, status: str = "SUKSES", reason: Optional[str] = None) -> None:
+    """Update the pipeline label of an ingredient."""
     with engine.begin() as c:
         c.execute(
-            insert(scan_errors).values(
-                tray_id=code,
-                label=label,
-                created_at=_iso_now(),
-                reason=reason,
-            )
+            items.update()
+            .where(items.c.id == item_id)
+            .values(label=label, status=status, reason=reason)
         )
 
+# ---------- Trays (TRY) ----------
+
+def db_register_tray(tray_id: str) -> None:
+    """Register a new tray (no label yet — not yet packed)."""
+    with engine.begin() as c:
+        if not c.execute(select(trays.c.tray_id).where(trays.c.tray_id == tray_id)).first():
+            c.execute(trays.insert().values(tray_id=tray_id))
+
+def db_is_tray_registered(tray_id: str) -> bool:
+    with engine.connect() as c:
+        return c.execute(select(trays.c.tray_id).where(trays.c.tray_id == tray_id)).first() is not None
+
+def db_get_tray_label(tray_id: str) -> Optional[str]:
+    """Return current label for a TRY tray."""
+    with engine.connect() as c:
+        row = c.execute(select(trays.c.label).where(trays.c.tray_id == tray_id)).first()
+        return row[0] if row else None
+
+def db_update_tray_label(tray_id: str, label: str, status: str = "SUKSES", reason: Optional[str] = None) -> None:
+    """Update the pipeline label of a tray."""
+    with engine.begin() as c:
+        c.execute(
+            trays.update()
+            .where(trays.c.tray_id == tray_id)
+            .values(label=label, status=status, reason=reason)
+        )
+
+# ---------- Scan errors ----------
+
+def db_log_scan_error(code: str, step: str, reason: str) -> None:
+    """Log a failed scan attempt."""
+    with engine.begin() as c:
+        c.execute(scan_errors.insert().values(
+            code=code,
+            step=step,
+            created_at=_iso_now(),
+            reason=reason,
+        ))
+
 # ---------- Print jobs ----------
+
 def db_enqueue_print(tspl: str) -> int:
-    """Insert print job, return job id."""
     with engine.begin() as c:
         res = c.execute(print_jobs.insert().values(tspl=tspl))
         pk = res.inserted_primary_key
         return int(pk[0]) if pk and pk[0] is not None else -1
 
 def db_fetch_next_print_job() -> Optional[dict]:
-    """Fetch one pending job (printed=0)."""
     with engine.connect() as c:
         row = c.execute(
             select(print_jobs)
@@ -205,7 +191,7 @@ def db_fetch_next_print_job() -> Optional[dict]:
         ).first()
         return dict(row._mapping) if row else None
 
-def db_mark_printed(job_id: int):
+def db_mark_printed(job_id: int) -> None:
     with engine.begin() as c:
         c.execute(
             print_jobs.update()
