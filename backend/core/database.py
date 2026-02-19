@@ -1,19 +1,17 @@
 # DPMBG_Project/backend/core/database.py
 import os
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
-from datetime import datetime
+
 from backend.utils.datetime_helpers import now_local_iso
 
 from sqlalchemy import (
-    create_engine, MetaData, Table, Column, Integer, String, Text, DateTime,
-    Index, select, func, UniqueConstraint, insert, update
+    create_engine, MetaData, Table, Column, Integer, String, Text,
+    DateTime, Date, Boolean, Index, select, func, insert, update
 )
 
 # ============================================================
 # STREAMLIT SECRETS BRIDGE
-# Must run before os.getenv("DATABASE_URL") so Streamlit Cloud
-# secrets are available as environment variables.
 # ============================================================
 try:
     import streamlit as st
@@ -24,93 +22,124 @@ except Exception:
     pass
 
 # ============================================================
-# ENGINE
+# ENGINES
 # ============================================================
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR      = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOCAL_DB_URL  = f"sqlite:///{os.path.join(BASE_DIR, 'local_scans.db')}"
+REMOTE_DB_URL = os.getenv("DATABASE_URL")
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    f"sqlite:///{os.path.join(BASE_DIR, 'scans.db')}"
+local_engine = create_engine(
+    LOCAL_DB_URL,
+    future=True,
+    pool_pre_ping=True,
+    connect_args={"check_same_thread": False},
 )
 
-engine_kwargs = {"future": True, "pool_pre_ping": True}
-if DATABASE_URL.startswith("sqlite:///"):
-    engine_kwargs["connect_args"] = {"check_same_thread": False}
+remote_engine = None
+if REMOTE_DB_URL:
+    remote_engine = create_engine(REMOTE_DB_URL, future=True, pool_pre_ping=True)
 
-engine = create_engine(DATABASE_URL, **engine_kwargs)
-metadata = MetaData()
+# engine = remote for Streamlit/receiving, local for scanner
+engine = remote_engine if remote_engine else local_engine
 
 # ============================================================
-# TABLES
+# LOCAL TABLES (SQLite on Android/Windows scanner)
 # ============================================================
+local_metadata = MetaData()
 
-# --- Ingredient table (BHN-xxxxx)
-# Stores what the ingredient IS and where it is in the ingredient pipeline.
-#
-# label progression: "received" → "processed"
-# status: "SUKSES" / "GAGAL"
-items = Table(
-    "items", metadata,
-    Column("id", String, primary_key=True),              # BHN-xxxxx
-    Column("name", String, nullable=False),
-    Column("weight_grams", Integer, nullable=False),
-    Column("unit", String, nullable=False),
-    Column("label", String, nullable=False, server_default="received"),
-    Column("status", String, nullable=False, server_default="SUKSES"),
-    Column("reason", Text, nullable=True),
-    Column("created_at", DateTime, server_default=func.now()),
-    Column("updated_at", DateTime, server_default=func.now(), onupdate=func.now()),
-)
-
-# --- Tray registry + pipeline table (TRY-xxxxx)
-# Stores which trays exist and where they are in the tray pipeline.
-#
-# label progression: "packed" → "delivered"
-# status: "SUKSES" / "GAGAL"
-trays = Table(
-    "trays", metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("tray_id", String, nullable=False, unique=True),
-    Column("label", String, nullable=True),
-    Column("status", String, nullable=True),
-    Column("reason", Text, nullable=True),
-    Column("created_at", DateTime, server_default=func.now()),
-    Column("created_date", DateTime, server_default=func.now(), onupdate=func.now()),
-)
-Index("ix_trays_tray_id", trays.c.tray_id)
-
-tray_items = Table(
-    "tray_items", metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("tray_id", String, nullable=False, unique=True),  # TRY-xxxxx
-)
-Index("ix_tray_items_tray", tray_items.c.tray_id)
-
-# --- Scan error log (failed scans from all steps)
-scan_errors = Table(
-    "scan_errors", metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("code", Text),
-    Column("step", Text, nullable=False),
+local_scan_queue = Table(
+    "local_scan_queue", local_metadata,
+    Column("id",         Integer, primary_key=True, autoincrement=True),
+    Column("code",       Text, nullable=False),
+    Column("step",       Text, nullable=False),    # "Processing" / "Packing" / "Delivery"
+    Column("label",      Text, nullable=False),    # "processed" / "packed" / "delivered"
     Column("created_at", Text, nullable=False),
-    Column("reason", Text, nullable=False),
+    Column("synced",     Integer, default=0),
 )
-Index("ix_scan_errors_code", scan_errors.c.code)
 
-# --- Print jobs (queue for mini PC polling)
-print_jobs = Table(
-    "print_jobs", metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("tspl", Text, nullable=False),
+local_scan_errors = Table(
+    "local_scan_errors", local_metadata,
+    Column("id",         Integer, primary_key=True, autoincrement=True),
+    Column("code",       Text),
+    Column("step",       Text, nullable=False),
+    Column("created_at", Text, nullable=False),
+    Column("reason",     Text, nullable=False),
+    Column("synced",     Integer, default=0),
+)
+
+# ============================================================
+# REMOTE TABLE REFERENCES (Supabase)
+# ============================================================
+remote_metadata = MetaData()
+
+# --- Ingredients (BHN-xxxxx)
+# One row per ingredient. Boolean columns track pipeline progress.
+# Timestamps record when each step happened.
+remote_items = Table(
+    "items", remote_metadata,
+    Column("id",                      String, primary_key=True),
+    Column("name",                    String),
+    Column("weight_grams",            Integer),
+    Column("unit",                    String),
+    Column("reason",                  Text),
+    Column("receiving",               Boolean, default=False),
+    Column("created_at_receiving",    DateTime),
+    Column("created_date_receiving",  Date),
+    Column("processing",              Boolean, default=False),
+    Column("created_at_processing",   DateTime),
+    Column("created_date_processing", Date),
+)
+
+# --- Trays (TRY-xxxxx)
+# One row per tray. Boolean columns track pipeline progress.
+# Timestamps record when each step happened.
+remote_trays = Table(
+    "trays", remote_metadata,
+    Column("id",                    Integer, primary_key=True, autoincrement=True),
+    Column("tray_id",               String, nullable=False, unique=True),
+    Column("reason",                Text),
+    Column("packing",               Boolean, default=False),
+    Column("created_at_packing",    DateTime),
+    Column("created_date_packing",  Date),
+    Column("delivery",              Boolean, default=False),
+    Column("created_at_delivery",   DateTime),
+    Column("created_date_delivery", Date),
+)
+
+# --- Tray registry (used for Packing validation)
+remote_tray_items = Table(
+    "tray_items", remote_metadata,
+    Column("id",      Integer, primary_key=True, autoincrement=True),
+    Column("tray_id", String, nullable=False, unique=True),
+)
+
+# --- Scan errors
+remote_scan_errors = Table(
+    "scan_errors", remote_metadata,
+    Column("id",         Integer, primary_key=True, autoincrement=True),
+    Column("code",       Text),
+    Column("step",       Text, nullable=False),
+    Column("created_at", Text, nullable=False),
+    Column("reason",     Text, nullable=False),
+)
+
+# --- Print jobs
+remote_print_jobs = Table(
+    "print_jobs", remote_metadata,
+    Column("id",         Integer, primary_key=True, autoincrement=True),
+    Column("tspl",       Text, nullable=False),
     Column("created_at", DateTime, server_default=func.now()),
-    Column("printed", Integer, server_default=func.cast(0, Integer)),
+    Column("printed",    Integer, server_default=func.cast(0, Integer)),
     Column("printed_at", DateTime, nullable=True),
 )
 
-# Create all tables
-def init_db():
-    metadata.create_all(engine)
+# ============================================================
+# INIT
+# ============================================================
 
+def init_db():
+    """Create local SQLite tables. Call once on scanner startup."""
+    local_metadata.create_all(local_engine)
 
 # ============================================================
 # HELPERS
@@ -119,105 +148,65 @@ def init_db():
 def _iso_now() -> str:
     return now_local_iso()
 
-def _today_str() -> str:
-    return date.today().strftime("%Y-%m-%d")
+# ---------- Local scan queue ----------
 
-# ---------- Items (BHN) ----------
-
-def db_insert_item(item_id: str, name: str, weight_g: int, unit: str = "g", reason: Optional[str] = None):
-    """Insert a new ingredient into items with label='received'."""
-    with engine.begin() as c:
-        c.execute(items.insert().values(
-            id=item_id,
-            name=name,
-            weight_grams=weight_g,
-            unit=unit,
-            label="received",
-            status="SUKSES",
-            reason=reason,
+def local_enqueue_scan(code: str, step: str, label: str) -> None:
+    with local_engine.begin() as c:
+        c.execute(local_scan_queue.insert().values(
+            code=code,
+            step=step,
+            label=label,
+            created_at=_iso_now(),
+            synced=0,
         ))
 
-def db_item_exists(item_id: str) -> bool:
-    with engine.connect() as c:
-        return c.execute(select(items.c.id).where(items.c.id == item_id)).first() is not None
-
-def db_get_item_label(item_id: str) -> Optional[str]:
-    """Return current label for a BHN ingredient."""
-    with engine.connect() as c:
-        row = c.execute(select(items.c.label).where(items.c.id == item_id)).first()
-        return row[0] if row else None
-
-def db_update_item_label(item_id: str, label: str, status: str = "SUKSES", reason: Optional[str] = None) -> None:
-    """Update the pipeline label of an ingredient."""
-    with engine.begin() as c:
-        c.execute(
-            items.update()
-            .where(items.c.id == item_id)
-            .values(label=label, status=status, reason=reason)
-        )
-
-# ---------- Trays (TRY) ----------
-
-def db_register_tray(tray_id: str) -> None:
-    """Register a new tray (no label yet — not yet packed)."""
-    with engine.begin() as c:
-        if not c.execute(select(trays.c.tray_id).where(trays.c.tray_id == tray_id)).first():
-            c.execute(trays.insert().values(tray_id=tray_id))
-
-def db_is_tray_registered(tray_id: str) -> bool:
-    with engine.connect() as c:
-        return c.execute(select(tray_items.c.tray_id).where(tray_items.c.tray_id == tray_id)).first() is not None
-
-def db_get_tray_label(tray_id: str) -> Optional[str]:
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    with engine.connect() as c:
-        row = c.execute(
-            select(trays.c.label)
-            .where(
-                (trays.c.tray_id == tray_id) &
-                (trays.c.created_date == today)
-            )
-            .order_by(trays.c.id.desc())
-        ).first()
-
-        return row[0] if row else None
-
-def db_update_tray_label(tray_id: str, label: str, status: str = "SUKSES", reason: Optional[str] = None) -> None:
-    """Update the pipeline label of a tray."""
-    with engine.begin() as c:
-        c.execute(
-            trays.update()
-            .where(trays.c.tray_id == tray_id)
-            .values(label=label, status=status, reason=reason)
-        )
-
-# ---------- Scan errors ----------
-
-def db_log_scan_error(code: str, step: str, reason: str) -> None:
-    """Log a failed scan attempt."""
-    with engine.begin() as c:
-        c.execute(scan_errors.insert().values(
+def local_enqueue_error(code: str, step: str, reason: str) -> None:
+    with local_engine.begin() as c:
+        c.execute(local_scan_errors.insert().values(
             code=code,
             step=step,
             created_at=_iso_now(),
             reason=reason,
+            synced=0,
         ))
 
-# ---------- Print jobs ----------
+# ---------- Remote helpers (receiving.py / Streamlit) ----------
+
+def db_insert_item(item_id: str, name: str, weight_g: int, unit: str = "g",
+                   reason: Optional[str] = None) -> None:
+    """Insert a new ingredient into Supabase with receiving=True."""
+    with engine.begin() as c:
+        c.execute(remote_items.insert().values(
+            id=item_id,
+            name=name,
+            weight_grams=weight_g,
+            unit=unit,
+            reason=reason,
+            receiving=True,
+            created_at_receiving=datetime.now(),
+            created_date_receiving=date.today(),
+        ))
+
+def db_register_tray(tray_id: str) -> None:
+    """Register a new tray in Supabase."""
+    with engine.begin() as c:
+        if not c.execute(
+            select(remote_trays.c.tray_id).where(remote_trays.c.tray_id == tray_id)
+        ).first():
+            c.execute(remote_trays.insert().values(tray_id=tray_id))
 
 def db_enqueue_print(tspl: str) -> int:
     with engine.begin() as c:
-        res = c.execute(print_jobs.insert().values(tspl=tspl))
+        res = c.execute(remote_print_jobs.insert().values(tspl=tspl))
         pk = res.inserted_primary_key
         return int(pk[0]) if pk and pk[0] is not None else -1
 
 def db_fetch_next_print_job() -> Optional[dict]:
     with engine.connect() as c:
         row = c.execute(
-            select(print_jobs)
-            .where(print_jobs.c.printed == 0)
-            .order_by(print_jobs.c.id.asc())
+            select(remote_print_jobs)
+            .where(remote_print_jobs.c.printed == 0)
+            .order_by(remote_print_jobs.c.id.asc())
             .limit(1)
         ).first()
         return dict(row._mapping) if row else None
@@ -225,7 +214,7 @@ def db_fetch_next_print_job() -> Optional[dict]:
 def db_mark_printed(job_id: int) -> None:
     with engine.begin() as c:
         c.execute(
-            print_jobs.update()
-            .where(print_jobs.c.id == job_id)
+            remote_print_jobs.update()
+            .where(remote_print_jobs.c.id == job_id)
             .values(printed=1, printed_at=func.now())
         )
