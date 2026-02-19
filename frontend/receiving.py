@@ -15,6 +15,15 @@ if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
 from backend.core.database import engine, db_insert_item
+import streamlit as st
+try:
+    _db_url = st.secrets.get("DATABASE_URL")
+    st.write("SECRET DB URL:", _db_url)
+except Exception as e:
+    st.write("SECRETS ERROR:", str(e))
+
+import os
+st.write("ENV DB URL:", os.getenv("DATABASE_URL", "NOT SET"))
 
 # ============================================================
 # SETTINGS
