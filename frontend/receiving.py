@@ -8,6 +8,19 @@ import secrets
 from datetime import datetime
 
 import streamlit as st
+
+# ============================================================
+# STREAMLIT SECRETS BRIDGE
+# Must run before importing database module so the engine
+# connects to Supabase instead of falling back to SQLite.
+# ============================================================
+try:
+    _db_url = st.secrets.get("DATABASE_URL")
+    if _db_url:
+        os.environ["DATABASE_URL"] = _db_url
+except Exception:
+    pass
+
 from sqlalchemy import text
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -15,15 +28,6 @@ if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
 from backend.core.database import engine, db_insert_item
-import streamlit as st
-try:
-    _db_url = st.secrets.get("DATABASE_URL")
-    st.write("SECRET DB URL:", _db_url)
-except Exception as e:
-    st.write("SECRETS ERROR:", str(e))
-
-import os
-st.write("ENV DB URL:", os.getenv("DATABASE_URL", "NOT SET"))
 
 # ============================================================
 # SETTINGS
@@ -98,8 +102,6 @@ if submitted:
         with engine.begin() as conn:
             bhn_id = generate_random_bhn_id(conn)
 
-        # Insert into items with label="received"
-        # reason stores the QC checklist payload
         db_insert_item(
             item_id=bhn_id,
             name=name.strip(),
