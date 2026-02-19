@@ -11,29 +11,33 @@ from sqlalchemy import (
 )
 
 # ============================================================
-# ENGINE
-# ============================================================
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# ============================================================
 # STREAMLIT SECRETS BRIDGE
 # Must run before os.getenv("DATABASE_URL") so Streamlit Cloud
 # secrets are available as environment variables.
 # ============================================================
 try:
     import streamlit as st
-    db_url = st.secrets.get("DATABASE_URL")
-    if db_url:
-        os.environ["DATABASE_URL"] = db_url
+    _db_url = st.secrets.get("DATABASE_URL")
+    if _db_url:
+        os.environ["DATABASE_URL"] = _db_url
 except Exception:
     pass
 
+# ============================================================
+# ENGINE
+# ============================================================
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"sqlite:///{os.path.join(BASE_DIR, 'scans.db')}"
+)
 
 engine_kwargs = {"future": True, "pool_pre_ping": True}
-if db_url.startswith("sqlite:///"):
+if DATABASE_URL.startswith("sqlite:///"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
 
-engine = create_engine(db_url, **engine_kwargs)
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 metadata = MetaData()
 
 # ============================================================
@@ -51,9 +55,9 @@ items = Table(
     Column("name", String, nullable=False),
     Column("weight_grams", Integer, nullable=False),
     Column("unit", String, nullable=False),
-    Column("label", String, nullable=False, server_default="received"),   # "received" / "processed"
-    Column("status", String, nullable=False, server_default="SUKSES"),    # "SUKSES" / "GAGAL"
-    Column("reason", Text, nullable=True),                                # QC payload or error
+    Column("label", String, nullable=False, server_default="received"),
+    Column("status", String, nullable=False, server_default="SUKSES"),
+    Column("reason", Text, nullable=True),
     Column("created_at", DateTime, server_default=func.now()),
     Column("updated_at", DateTime, server_default=func.now(), onupdate=func.now()),
 )
@@ -66,9 +70,9 @@ items = Table(
 trays = Table(
     "trays", metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("tray_id", String, nullable=False, unique=True),              # TRY-xxxxx
-    Column("label", String, nullable=True),                              # "packed" / "delivered" / None if not yet packed
-    Column("status", String, nullable=True),                             # "SUKSES" / "GAGAL"
+    Column("tray_id", String, nullable=False, unique=True),
+    Column("label", String, nullable=True),
+    Column("status", String, nullable=True),
     Column("reason", Text, nullable=True),
     Column("created_at", DateTime, server_default=func.now()),
     Column("updated_at", DateTime, server_default=func.now(), onupdate=func.now()),
@@ -79,8 +83,8 @@ Index("ix_trays_tray_id", trays.c.tray_id)
 scan_errors = Table(
     "scan_errors", metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("code", Text),                    # BHN-xxxxx or TRY-xxxxx
-    Column("step", Text, nullable=False),    # "Processing" / "Packing" / "Delivery"
+    Column("code", Text),
+    Column("step", Text, nullable=False),
     Column("created_at", Text, nullable=False),
     Column("reason", Text, nullable=False),
 )
