@@ -2,7 +2,7 @@
 import os
 from datetime import date
 from typing import Optional
-
+from datetime import datetime
 from backend.utils.datetime_helpers import now_local_iso
 
 from sqlalchemy import (
@@ -75,9 +75,16 @@ trays = Table(
     Column("status", String, nullable=True),
     Column("reason", Text, nullable=True),
     Column("created_at", DateTime, server_default=func.now()),
-    Column("updated_at", DateTime, server_default=func.now(), onupdate=func.now()),
+    Column("created_date", DateTime, server_default=func.now(), onupdate=func.now()),
 )
 Index("ix_trays_tray_id", trays.c.tray_id)
+
+tray_items = Table(
+    "tray_items", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("tray_id", String, nullable=False, unique=True),  # TRY-xxxxx
+)
+Index("ix_tray_items_tray", tray_items.c.tray_id)
 
 # --- Scan error log (failed scans from all steps)
 scan_errors = Table(
@@ -101,7 +108,9 @@ print_jobs = Table(
 )
 
 # Create all tables
-metadata.create_all(engine)
+def init_db():
+    metadata.create_all(engine)
+
 
 # ============================================================
 # HELPERS
@@ -157,12 +166,21 @@ def db_register_tray(tray_id: str) -> None:
 
 def db_is_tray_registered(tray_id: str) -> bool:
     with engine.connect() as c:
-        return c.execute(select(trays.c.tray_id).where(trays.c.tray_id == tray_id)).first() is not None
+        return c.execute(select(tray_items.c.tray_id).where(tray_items.c.tray_id == tray_id)).first() is not None
 
 def db_get_tray_label(tray_id: str) -> Optional[str]:
-    """Return current label for a TRY tray."""
+    today = datetime.now().strftime("%Y-%m-%d")
+
     with engine.connect() as c:
-        row = c.execute(select(trays.c.label).where(trays.c.tray_id == tray_id)).first()
+        row = c.execute(
+            select(trays.c.label)
+            .where(
+                (trays.c.tray_id == tray_id) &
+                (trays.c.created_date == today)
+            )
+            .order_by(trays.c.id.desc())
+        ).first()
+
         return row[0] if row else None
 
 def db_update_tray_label(tray_id: str, label: str, status: str = "SUKSES", reason: Optional[str] = None) -> None:
