@@ -61,15 +61,30 @@ def _sync_scans():
                 )
 
             elif step == "Packing":
-                remote.execute(
-                    remote_trays.update()
+                existing = remote.execute(
+                    select(remote_trays.c.tray_id)
                     .where(remote_trays.c.tray_id == code)
-                    .values(
-                        packing=True,
-                        created_at_packing=now,
-                        created_date_packing=today,
+                ).first()
+
+                if existing:
+                    remote.execute(
+                        remote_trays.update()
+                        .where(remote_trays.c.tray_id == code)
+                        .values(
+                            packing=True,
+                            created_at_packing=now,
+                            created_date_packing=today,
+                        )
                     )
-                )
+                else:
+                    remote.execute(
+                        remote_trays.insert().values(
+                            tray_id=code,
+                            packing=True,
+                            created_at_packing=now,
+                            created_date_packing=today,
+                        )
+                    )
 
             elif step == "Delivery":
                 remote.execute(
