@@ -9,16 +9,12 @@ from datetime import datetime
 
 import streamlit as st
 from sqlalchemy import text
-import backend.core.database as _db
-import inspect
-st.write("PATH:", _db.__file__)
-st.write("SIGNATURE:", str(inspect.signature(_db.db_insert_item)))
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-from backend.core.database import engine, db_insert_item
+from backend.core.database import engine
 
 # ============================================================
 # SETTINGS
@@ -93,15 +89,23 @@ if submitted:
         with engine.begin() as conn:
             bhn_id = generate_random_bhn_id(conn)
 
-        # Insert into items with label="received"
-        # reason stores the QC checklist payload
-        db_insert_item(
-            item_id=bhn_id,
-            name=name.strip(),
-            weight_g=weight_g,
-            unit="g",
-            reason=json.dumps(qc_payload, ensure_ascii=False),
-        )
+            # Note: using raw SQL directly instead of db_insert_item()
+            # because Render is caching an old version of database.py
+            # that doesn't have the 'reason' parameter yet.
+            # TODO: switch back to db_insert_item() once Render cache issue is resolved.
+            conn.execute(
+                text("""
+                    INSERT INTO items (id, name, weight_grams, unit, label, status, reason)
+                    VALUES (:id, :name, :wg, :unit, 'received', 'SUKSES', :reason)
+                """),
+                {
+                    "id": bhn_id,
+                    "name": name.strip(),
+                    "wg": weight_g,
+                    "unit": "g",
+                    "reason": json.dumps(qc_payload, ensure_ascii=False),
+                }
+            )
 
         st.success(f"✅ Saved: **{bhn_id}** — {name.strip()} ({weight_g}g)")
         st.info("Print sticker with this ID and attach to the container.")
