@@ -1,14 +1,14 @@
 import requests
 from typing import Optional
 from backend.core.config import PRINTER_AGENT_URL
-from backend.core.database import engine, print_jobs
+from backend.core.database import engine, remote_print_jobs
 from sqlalchemy import select, func
 
 def db_create_print_job(tspl: str) -> int:
     """Insert a new print job and return its ID."""
     with engine.begin() as c:
         res = c.execute(
-            print_jobs.insert().values(tspl=tspl, printed=0)
+            remote_print_jobs.insert().values(tspl=tspl, printed=0)
         )
         return res.inserted_primary_key[0]
 
@@ -18,9 +18,9 @@ def db_get_next_print_job() -> Optional[dict]:
     with engine.connect() as c:
         row = (
             c.execute(
-                select(print_jobs)
-                .where(print_jobs.c.printed == 0)
-                .order_by(print_jobs.c.id.asc())
+                select(remote_print_jobs)
+                .where(remote_print_jobs.c.printed == 0)
+                .order_by(remote_print_jobs.c.id.asc())
                 .limit(1)
             )
             .first()
@@ -32,8 +32,8 @@ def db_mark_print_job_printed(job_id: int):
     """Mark a job as printed."""
     with engine.begin() as c:
         c.execute(
-            print_jobs.update()
-            .where(print_jobs.c.id == job_id)
+            remote_print_jobs.update()
+            .where(remote_print_jobs.c.id == job_id)
             .values(
                 printed=1,
                 printed_at=func.now(),
