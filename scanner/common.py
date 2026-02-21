@@ -15,7 +15,7 @@ import os
 import sys
 import subprocess
 import time
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -183,7 +183,8 @@ def validate_packing(code: str) -> tuple[bool, str]:
     if not registered:
         return False, "TRAY_NOT_REGISTERED"
     if row and row.packing:
-        return False, "ALREADY_PACKED"
+        if row.created_date_packing == date.today():
+            return False, "ALREADY_PACKED_TODAY"
     return True, ""
 
 
