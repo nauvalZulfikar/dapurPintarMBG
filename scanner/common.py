@@ -125,7 +125,11 @@ def _get_remote_item(code: str):
         return None
     with remote_engine.connect() as c:
         return c.execute(
-            select(remote_items.c.receiving, remote_items.c.processing)
+            select(
+                remote_trays.c.packing,
+                remote_trays.c.delivery,
+                remote_trays.c.created_date_packing
+            )
             .where(remote_items.c.id == code)
         ).first()
 
