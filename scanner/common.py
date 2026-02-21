@@ -126,8 +126,8 @@ def _get_remote_item(code: str):
     with remote_engine.connect() as c:
         return c.execute(
             select(
-                remote_trays.c.packing,
-                remote_trays.c.delivery
+                remote_trays.c.receiving,
+                remote_trays.c.processing,
             )
             .where(remote_items.c.id == code)
         ).first()
