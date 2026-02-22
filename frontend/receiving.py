@@ -6,7 +6,6 @@ import json
 import string
 import secrets
 from datetime import datetime, date
-from backend.services.printing import generate_label, db_create_print_job
 import streamlit as st
 import os
 
@@ -25,12 +24,13 @@ try:
 except Exception:
     pass
 
-from sqlalchemy import text
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
+from sqlalchemy import text
+from backend.services.printing import generate_label, db_create_print_job
 from backend.core.database import engine, db_insert_item
 
 # ============================================================
