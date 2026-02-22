@@ -6,8 +6,12 @@ import json
 import string
 import secrets
 from datetime import datetime, date
-from backend.services.printing import tspl_label, db_create_print_job
+from backend.services.printing import generate_label, db_create_print_job
 import streamlit as st
+import os
+
+from dotenv import load_dotenv
+load_dotenv()
 
 # ============================================================
 # STREAMLIT SECRETS BRIDGE
@@ -110,7 +114,7 @@ if submitted:
             reason=json.dumps(qc_payload, ensure_ascii=False),
         )
 
-        tspl = tspl_label(bhn_id, name.strip(), weight_g)
+        tspl = generate_label(bhn_id, name, weight_g)
         db_create_print_job(tspl)
 
         st.success(f"✅ Saved: **{bhn_id}** — {name.strip()} ({weight_g}g)")
