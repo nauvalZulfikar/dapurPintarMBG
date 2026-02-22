@@ -6,7 +6,7 @@ import json
 import string
 import secrets
 from datetime import datetime, date
-
+from backend.services.printing import tspl_label, db_create_print_job
 import streamlit as st
 
 # ============================================================
@@ -109,6 +109,9 @@ if submitted:
             unit="g",
             reason=json.dumps(qc_payload, ensure_ascii=False),
         )
+
+        tspl = tspl_label(bhn_id, name.strip(), weight_g)
+        db_create_print_job(tspl)
 
         st.success(f"✅ Saved: **{bhn_id}** — {name.strip()} ({weight_g}g)")
         st.info("Print sticker with this ID and attach to the container.")
