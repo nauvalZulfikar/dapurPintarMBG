@@ -94,50 +94,101 @@ PRINT 1,1
 
 def process_delivery_scan(tray_id: str):
     """
-    Call this function when a tray barcode is scanned.
+    1 scan = 10 trays.
+    Distribute trays from closest school first.
+    If remaining quota < 10, spill over to next closest school.
+    Print ONE sticker summarizing allocations.
     """
+
+    TOTAL_TRAYS = 10
 
     with engine.begin() as conn:
 
-        # 1️⃣ Determine school (closest first with remaining quota)
-        school_name = find_target_school(conn)
+        schools = load_schools()
+        allocations = []
+        remaining = TOTAL_TRAYS
 
-        if not school_name:
-            raise Exception("All schools have fulfilled their tray quota.")
+        # Allocate trays from closest to furthest
+        for school in schools:
+            school_name = school["name"]
+            quota = school["tray_quota"]
 
-        # 2️⃣ Count how many trays already assigned to this school
-        tray_count = conn.execute(
-            text("""
-                SELECT COUNT(*)
-                FROM deliveries
-                WHERE school_name = :school_name
-            """),
-            {"school_name": school_name}
-        ).scalar()
+            assigned = conn.execute(
+                text("""
+                    SELECT COUNT(*)
+                    FROM deliveries
+                    WHERE school_name = :school_name
+                """),
+                {"school_name": school_name}
+            ).scalar() or 0
 
-        tray_count = (tray_count or 0) + 1
+            available = quota - assigned
 
-        # 3️⃣ Insert delivery record
-        conn.execute(
-            text("""
-                INSERT INTO deliveries (tray_id, school_name, created_at)
-                VALUES (:tray_id, :school_name, :created_at)
-            """),
-            {
-                "tray_id": tray_id,
-                "school_name": school_name,
-                "created_at": datetime.utcnow()
-            }
+            if available <= 0:
+                continue
+
+            take = min(available, remaining)
+
+            allocations.append({
+                "school": school_name,
+                "n_trays": take
+            })
+
+            # Insert rows into deliveries table
+            for _ in range(take):
+                conn.execute(
+                    text("""
+                        INSERT INTO deliveries (tray_id, school_name, created_at)
+                        VALUES (:tray_id, :school_name, :created_at)
+                    """),
+                    {
+                        "tray_id": tray_id,
+                        "school_name": school_name,
+                        "created_at": datetime.utcnow()
+                    }
+                )
+
+            remaining -= take
+
+            if remaining == 0:
+                break
+
+        if remaining > 0:
+            raise Exception("Not enough remaining tray quota across schools.")
+
+        # ---------- Generate TSPL Sticker (50x21mm) ----------
+
+    qr_link = f"https://dapurpintarmbg-countdown.streamlit.app/?tray_id={tray_id}"
+
+    y_position = 20
+    text_lines = ""
+
+    for alloc in allocations:
+        text_lines += (
+            f'TEXT 10,{y_position},"0",0,6,6,'
+            f'"{alloc["school"]} {alloc["n_trays"]}"\n'
         )
+        y_position += 20
 
-    # 4️⃣ Generate TSPL sticker
-    tspl = generate_delivery_tspl(tray_id, school_name, tray_count)
+    tspl = f"""
+SIZE 50 mm, 21 mm
+GAP 1 mm, 0 mm
+SPEED 4
+DENSITY 15
+DIRECTION 1
+CLS
 
-    # 5️⃣ Enqueue print job
+{text_lines}
+
+QRCODE 300,10,L,3,A,0,"{qr_link}"
+
+PRINT 1,1
+"""
+
+    # Enqueue print job
     db_create_print_job(tspl)
 
     return {
         "tray_id": tray_id,
-        "school": school_name,
-        "tray_number_for_school": tray_count
+        "allocations": allocations
     }
