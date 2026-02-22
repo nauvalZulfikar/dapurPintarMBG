@@ -46,9 +46,7 @@ def qr_link_for_item(item_id: str) -> str:
     return f"https://wa.me/628132258085?text={item_id}"
 
 # new
-def tspl_label(item_id: str, name: str, weight_g: int) -> str:
-    qr = qr_link_for_item(item_id)
-
+def tspl_label(item_id, name, weight_g):
     return f"""
 SIZE 50 mm, 21 mm
 GAP 1 mm, 0 mm
@@ -57,15 +55,7 @@ DENSITY 15
 DIRECTION 1
 CLS
 
-; ---- TEXT AREA ----
-TEXT 15,80,"0",0,10,10,"{name}"
-TEXT 15,110,"0",0,10,10,"{weight_g} g"
-
-; ---- QR CODE (small, fits 25mm height) ----
-QRCODE 230,51,L,4,A,0,"{qr}"
-
-# ; ---- Item ID under QR ----
-# TEXT 230,80,"0",0,6,6,"{item_id}"
+BARCODE 50,40,"128",80,1,0,2,2,"{item_id}"
 
 PRINT 1,1
 """
