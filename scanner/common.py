@@ -142,6 +142,7 @@ def _get_remote_tray(tray_id: str):
                 remote_trays.c.packing, 
                 remote_trays.c.delivery,
                 remote_trays.c.created_date_packing,
+                remote_trays.c.created_date_delivery,
                 )
             .where(remote_trays.c.tray_id == tray_id)
         ).first()
@@ -212,7 +213,8 @@ def validate_delivery(code: str) -> tuple[bool, str]:
     if not row or not row.packing:
         return False, "NOT_PACKED"
     if row.delivery:
-        return False, "ALREADY_DELIVERED"
+        if row.created_date_delivery == date.today():
+            return False, "ALREADY_DELIVERED_TODAY"
     return True, ""
 
 
