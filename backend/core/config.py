@@ -15,7 +15,6 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 TZ_REGION = (os.getenv("TZ_REGION", "Asia/Jakarta") or "").strip()
 
 # ---------- PRINTER SETTINGS ----------
-PRINTER_AGENT_URL = (os.getenv("PRINTER_AGENT_URL", "") or "").strip()
 PRINTER_TYPE = os.getenv("PRINTER_TYPE", "none")
 PRINTER_ADDRESS = os.getenv("PRINTER_ADDRESS", "")
 PRINTER_NAME = os.getenv("PRINTER_NAME", "4BARCODE 4B-2054TB")

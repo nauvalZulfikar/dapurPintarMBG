@@ -22,6 +22,9 @@ from typing import Optional
 
 import requests
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # --- Logging ---
 logging.basicConfig(
     level=logging.INFO,
@@ -30,10 +33,10 @@ logging.basicConfig(
 logger = logging.getLogger("printer_poller")
 
 # --- Config from env ---
-CLOUD_BASE_URL = os.getenv("CLOUD_BASE_URL", "https://dapurpintarmbg.onrender.com")
-CLOUD_PRINT_KEY = os.getenv("CLOUD_PRINT_KEY", "")    # must match Render
-PRINTER_NAME = os.getenv("PRINTER_NAME", "DPMBG_Paseh_PB830L")
+CLOUD_BASE_URL = os.getenv("DATABASE_URL")#, "https://dapurpintarmbg.onrender.com")
+PRINTER_NAME = os.getenv("PRINTER_NAME")#, "DPMBGPasehZP550")
 POLL_INTERVAL = float(os.getenv("POLL_INTERVAL", "2.0"))  # seconds
+PRINTER_LANG = os.getenv("PRINTER_LANG")#, "TSPL").upper()
 
 # --- Windows printing ---
 try:
@@ -43,7 +46,6 @@ except ImportError:
     HAS_WIN32 = False
     win32print = None
     logger.error("pywin32 not installed. Install with: pip install pywin32")
-
 
 def send_raw_to_printer(data: str, printer_name: str):
     if not HAS_WIN32:
@@ -57,7 +59,7 @@ def send_raw_to_printer(data: str, printer_name: str):
     hPrinter = None
     try:
         hPrinter = win32print.OpenPrinter(printer_name)
-        job = win32print.StartDocPrinter(hPrinter, 1, ("RAW TSPL Job", None, "RAW"))
+        job = win32print.StartDocPrinter(hPrinter, 1, ("RAW PRINT JOB", None, "RAW"))
         win32print.StartPagePrinter(hPrinter)
         win32print.WritePrinter(hPrinter, data.encode("utf-8"))
         win32print.EndPagePrinter(hPrinter)
@@ -67,12 +69,9 @@ def send_raw_to_printer(data: str, printer_name: str):
         if hPrinter:
             win32print.ClosePrinter(hPrinter)
 
-
 def poll_once():
     """One poll cycle: fetch job, print if exists, ack."""
     headers = {}
-    if CLOUD_PRINT_KEY:
-        headers["X-Print-Key"] = CLOUD_PRINT_KEY
 
     # 1. Ask cloud for a job
     url = f"{CLOUD_BASE_URL.rstrip('/')}/print-queue"
@@ -102,12 +101,12 @@ def poll_once():
     resp2.raise_for_status()
     logger.info(f"Acked print-complete for job id={job_id}")
 
-
 def main():
     logger.info("Starting printer poller...")
     logger.info(f"CLOUD_BASE_URL = {CLOUD_BASE_URL}")
     logger.info(f"PRINTER_NAME   = {PRINTER_NAME}")
     logger.info(f"POLL_INTERVAL  = {POLL_INTERVAL} seconds")
+    logger.info(f"PRINTER_LANG  = {PRINTER_LANG}")
 
     while True:
         try:
@@ -117,7 +116,6 @@ def main():
         except Exception as e:
             logger.error(f"[PRINT ERROR] {e}")
         time.sleep(POLL_INTERVAL)
-
 
 if __name__ == "__main__":
     main()
