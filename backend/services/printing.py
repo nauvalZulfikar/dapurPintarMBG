@@ -1,3 +1,5 @@
+# DPMBG_Project\backend\services\printing.py
+
 import requests
 from typing import Optional
 from backend.core.database import engine, remote_print_jobs
@@ -78,24 +80,11 @@ def generate_label(item_id, name, weight_g):
     printer_lang = os.getenv("PRINTER_LANG", "TSPL").upper()
     print("DEBUG printer_lang raw:", repr(printer_lang))
     printer_lang = printer_lang.upper()
-    
+
     if printer_lang == "ZPL":
         return generate_zpl(item_id, name, weight_g)
 
     return generate_tspl(item_id, name, weight_g)
-# def tspl_label(item_id, name, weight_g):
-#     return f"""
-# SIZE 50 mm, 21 mm
-# GAP 1 mm, 0 mm
-# SPEED 4
-# DENSITY 15
-# DIRECTION 1
-# CLS
-
-# BARCODE 50,40,"128",80,1,0,2,2,"{item_id}"
-
-# PRINT 1,1
-# """
 
 def save_tspl_to_file(tspl_code: str, file_path: str):
     with open(file_path, "w", encoding="utf-8") as f:
