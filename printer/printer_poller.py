@@ -18,7 +18,8 @@ Run:
 import os
 import time
 import logging
-from typing import Optional
+from backend.core.database import engine, remote_print_jobs
+from sqlalchemy import select, update, func
 
 import requests
 
@@ -70,37 +71,37 @@ def send_raw_to_printer(data: str, printer_name: str):
             win32print.ClosePrinter(hPrinter)
 
 def poll_once():
-    """One poll cycle: fetch job, print if exists, ack."""
-    headers = {}
+    with engine.begin() as conn:
+        row = conn.execute(
+            select(remote_print_jobs)
+            .where(remote_print_jobs.c.printed == 0)
+            .order_by(remote_print_jobs.c.id.asc())
+            .limit(1)
+        ).first()
 
-    # 1. Ask cloud for a job
-    url = f"{CLOUD_BASE_URL.rstrip('/')}/print-queue"
-    logger.debug(f"Polling {url}")
-    resp = requests.get(url, headers=headers, timeout=10)
-    resp.raise_for_status()
-    data = resp.json()
+        if not row:
+            return
 
-    jobs = data.get("jobs", [])
-    if not jobs:
-        logger.debug("No pending jobs.")
-        return
+        job = dict(row._mapping)
+        job_id = job["id"]
+        tspl = job["tspl"]
 
-    job = jobs[0]
-    job_id = job["id"]
-    tspl = job["tspl"]
+        logger.info(f"Received print job id={job_id}")
 
-    logger.info(f"Received print job id={job_id}")
+        # Print
+        send_raw_to_printer(tspl, PRINTER_NAME)
 
-    # 2. Print locally
-    send_raw_to_printer(tspl, PRINTER_NAME)
+        # Mark printed
+        conn.execute(
+            update(remote_print_jobs)
+            .where(remote_print_jobs.c.id == job_id)
+            .values(
+                printed=1,
+                printed_at=func.now()
+            )
+        )
 
-    # 3. Notify cloud
-    url_done = f"{CLOUD_BASE_URL.rstrip('/')}/print-complete"
-    done_payload = {"id": job_id}
-    resp2 = requests.post(url_done, headers=headers, json=done_payload, timeout=10)
-    resp2.raise_for_status()
-    logger.info(f"Acked print-complete for job id={job_id}")
-
+        logger.info(f"Marked job {job_id} as printed")
 def main():
     logger.info("Starting printer poller...")
     logger.info(f"CLOUD_BASE_URL = {CLOUD_BASE_URL}")
