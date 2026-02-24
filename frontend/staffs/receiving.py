@@ -5,6 +5,10 @@ import sys
 import json
 import string
 import secrets
+import streamlit.components.v1 as components
+from sqlalchemy import text
+from backend.services.printing import generate_label, db_create_print_job
+from backend.core.database import engine, db_insert_item
 from datetime import datetime, date
 import streamlit as st
 import os
@@ -28,10 +32,6 @@ except Exception:
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
-
-from sqlalchemy import text
-from backend.services.printing import generate_label, db_create_print_job
-from backend.core.database import engine, db_insert_item
 
 # ============================================================
 # SETTINGS
@@ -124,3 +124,13 @@ if submitted:
 
     except Exception as e:
         st.error(f"Error saving data: {e}")
+
+# Auto-focus hack
+components.html("""
+<script>
+const inputs = window.parent.document.querySelectorAll('input');
+if (inputs.length > 0) {
+    inputs[0].focus();
+}
+</script>
+""", height=0)

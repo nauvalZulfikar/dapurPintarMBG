@@ -49,11 +49,9 @@ load_dotenv(os.path.join(_here, '..', '.env'))
 # CONFIG
 # ============================================================
 
-SCHOOLS_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)),
-    "data",
-    "schools.json"
-)
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+SCHOOLS_FILE = os.path.join(BASE_DIR, "data", "schools.json")
 
 COUNTDOWN_BASE_URL = "https://dapurpintarmbg-countdown.streamlit.app"
 

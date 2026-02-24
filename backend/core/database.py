@@ -9,6 +9,8 @@ from sqlalchemy import (
     create_engine, MetaData, Table, Column, Integer, String, Text,
     DateTime, Date, Boolean, Index, select, func, insert, update
 )
+from dotenv import load_dotenv
+load_dotenv()
 
 # ============================================================
 # STREAMLIT SECRETS BRIDGE
