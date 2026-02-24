@@ -16,6 +16,7 @@ def db_create_print_job(tspl: str) -> int:
             remote_print_jobs.insert().values(tspl=tspl, printed=0)
         )
         return res.inserted_primary_key[0]
+    
 
 
 def db_get_next_print_job() -> Optional[dict]:
