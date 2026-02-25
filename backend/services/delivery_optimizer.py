@@ -25,11 +25,10 @@ def fetch_trays_packed_times(db_session: Session) -> List[FoodTray]:
     today = datetime.now().date()
     rows = db_session.execute(
         text("""
-            SELECT tray_id, created_at
+            SELECT tray_id, created_at_packing
             FROM trays
-            WHERE label = 'packed'
-            AND created_date = :today
-            ORDER BY created_at ASC
+            WHERE created_date_packing = :today
+            ORDER BY created_at_packing ASC
         """),
         {"today": str(today)}
     ).fetchall()
