@@ -1,4 +1,4 @@
 python-dotenv
 SQLAlchemy
 psycopg2-binary
-requests>=2.31
+requests
