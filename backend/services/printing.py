@@ -71,7 +71,6 @@ def generate_zpl(item_id, name, weight_g):
 ^PW400
 ^LL160
 ^FO30,30^A0N,40,40^FD{name}^FS
-^FO30,80^A0N,35,35^FD{weight_g} g^FS
 ^FO200,20^BCN,80,Y,N,N
 ^FD{item_id}^FS
 ^XZ
