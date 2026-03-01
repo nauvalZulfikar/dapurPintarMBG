@@ -7,7 +7,7 @@ from backend.utils.datetime_helpers import now_local_iso
 
 from sqlalchemy import (
     create_engine, MetaData, Table, Column, Integer, String, Text,
-    DateTime, Date, Boolean, Index, select, func, insert, update
+    DateTime, Date, Boolean, Index, select, func, insert, update, NullPool
 )
 from dotenv import load_dotenv
 load_dotenv()
@@ -39,7 +39,13 @@ local_engine = create_engine(
 
 remote_engine = None
 if REMOTE_DB_URL:
-    remote_engine = create_engine(REMOTE_DB_URL, future=True, pool_pre_ping=True)
+    remote_engine = create_engine(
+        REMOTE_DB_URL, 
+        future=True, 
+        pool_pre_ping=True,
+        pool_recycle=180,
+        poolclass=NullPool
+        )
 
 # engine = remote for Streamlit/receiving, local for scanner
 engine = remote_engine if remote_engine else local_engine
