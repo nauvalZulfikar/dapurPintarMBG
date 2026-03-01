@@ -76,7 +76,7 @@ with st.form("receiving_form"):
     st.subheader("Bahan")
     name         = st.text_input("Nama Bahan (e.g. Ayam, Jeruk)")
     weight_value = st.number_input("Berat", min_value=0.0, step=0.1)
-    weight_unit  = st.selectbox("Unit", ["g", "kg"])
+    weight_unit  = st.selectbox("Unit", ["g", "kg", "pcs"])
 
     st.subheader("QC Checklist")
     checklist = {item: st.checkbox(item, value=False) for item in CHECKLIST_ITEMS}
