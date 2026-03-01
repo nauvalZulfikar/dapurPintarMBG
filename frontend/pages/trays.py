@@ -20,7 +20,7 @@ def render_trays_tab(trays: pd.DataFrame, tray_items: pd.DataFrame):
         st.markdown("**Trays**")
         if not trays.empty:
             # Sort by created_at descending to show newest first
-            trays_sorted = trays.sort_values('created_at', ascending=False)
+            trays_sorted = trays.sort_values('created_at_packing', ascending=False)
             st.dataframe(trays_sorted, width=True)
         else:
             st.warning("No trays in database yet.")
@@ -40,7 +40,7 @@ def render_trays_tab(trays: pd.DataFrame, tray_items: pd.DataFrame):
         tray_items['tray_id'] = tray_items['tray_id'].astype(str)
         trays['id'] = trays['id'].astype(str)
         merged = tray_items.merge(
-            trays[['id', 'created_at']],
+            trays[['id', 'created_at_packing']],
             left_on='tray_id',
             right_on='id',
         )
