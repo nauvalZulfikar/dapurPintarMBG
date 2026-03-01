@@ -1,19 +1,22 @@
 # frontend/receiving.py
-
 import os
 import sys
 import json
 import string
 import secrets
+import streamlit as st
 import streamlit.components.v1 as components
+from datetime import datetime, date
 from sqlalchemy import text
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from backend.services.printing import generate_label, db_create_print_job
 from backend.core.database import engine, db_insert_item
-from datetime import datetime, date
-import streamlit as st
-import os
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # ============================================================
@@ -29,9 +32,7 @@ except Exception:
     pass
 
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if PROJECT_ROOT not in sys.path:
-    sys.path.append(PROJECT_ROOT)
+
 
 # ============================================================
 # SETTINGS
