@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Badan Gizi Nasional logo colors */
+  --color-brand:       #1B3A6B;   /* dark navy — outer logo background */
+  --color-brand-dark:  #142952;   /* darker navy — hover */
+  --color-brand-mid:   #2E5FA3;   /* medium blue */
+  --color-brand-light: #EBF3FB;   /* very light blue — backgrounds */
+  --color-accent:      #6BAFD6;   /* light sky blue — inner ring */
+  --color-gold:        #C9A84C;   /* Garuda gold — accents only */
+}

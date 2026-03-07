@@ -5,41 +5,22 @@ common.py
 Scanner business logic for Processing, Packing, Delivery.
 
 Flow:
-  1. Scan barcode
-  2. Validate against Supabase directly (check boolean pipeline columns)
-  3. Write result to local SQLite queue immediately
-  4. Background thread (syncer.py) pushes local -> Supabase every 60s, then deletes synced rows
+  1. Scan barcode from stdin (HID device)
+  2. POST to FastAPI /api/scans for validation + DB write
+  3. On network failure: queue locally in SQLite, retry via background thread every 30s
 """
 
 import os
 import sys
 import json
+import sqlite3
 import subprocess
+import threading
 import time
-from datetime import date, datetime
-from typing import Optional
+from datetime import datetime
 
+import requests
 from dotenv import load_dotenv
-from sqlalchemy import select, text
-from sqlalchemy.exc import OperationalError
-
-from backend.core.database import engine
-from backend.core.database import (
-    local_engine,
-    remote_engine,
-    remote_items,
-    remote_trays,
-    remote_tray_items,
-    local_enqueue_scan,
-    local_enqueue_error,
-    init_db,
-)
-from backend.core.syncer import start_sync_thread
-
-from sqlalchemy import text
-
-from backend.core.database import engine
-from backend.services.printing import db_create_print_job
 
 load_dotenv()
 _here = os.path.dirname(os.path.abspath(__file__))
@@ -49,139 +30,119 @@ load_dotenv(os.path.join(_here, '..', '.env'))
 # CONFIG
 # ============================================================
 
-SCHOOLS_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)),
-    "data",
-    "schools.json"
-)
-
-COUNTDOWN_BASE_URL = "https://dapurpintarmbg-countdown.streamlit.app"
-
-SUCCESS_SOUND    = "scanner/SUCCESS.mp3"
-FAILED_SOUND     = "scanner/FAILED.mp3"
+API_BASE_URL     = os.getenv("API_BASE_URL", "http://localhost:8000")
+SCANNER_KEY      = os.getenv("SCANNER_KEY", "")
+SUCCESS_SOUND    = os.path.join(_here, "SUCCESS.mp3")
+FAILED_SOUND     = os.path.join(_here, "FAILED.mp3")
 DEBOUNCE_SECONDS = 0.7
-DB_LOCK_RETRIES  = 6
-DB_LOCK_SLEEP    = 0.15
-BHN_PREFIX       = "BHN-"
-TRAY_PREFIX      = "TRY-"
-TRAY_LEN         = 12
 ALLOWED_STEPS    = {"Processing", "Packing", "Delivery"}
+HTTP_TIMEOUT     = 5
+RETRY_INTERVAL   = 30
+
+# Local SQLite for offline queue
+LOCAL_DB_PATH = os.path.join(_here, "local_queue.db")
+BHN_PREFIX    = "BHN-"
+TRAY_PREFIX   = "TRY-"
 
 # ============================================================
-# LOAD & SORT SCHOOLS (closest first)
+# LOCAL SQLITE QUEUE (offline resilience)
 # ============================================================
 
-def load_schools():
-    with open(SCHOOLS_FILE, "r", encoding="utf-8") as f:
-        schools = json.load(f)
-
-    # sort from closest to furthest
-    schools_sorted = sorted(schools, key=lambda s: s["distance"])
-    return schools_sorted
-
-# ============================================================
-# FIND NEXT SCHOOL THAT STILL NEEDS TRAYS
-# ============================================================
-
-# def find_target_school():
-#     schools = load_schools()
-
-#     # Just return the closest school
-#     if schools:
-#         return schools[0]["name"]
-
-#     return None
-
-# ============================================================
-# GENERATE TSPL STICKER
-# ============================================================
-
-def generate_delivery_tspl(tray_id: str, allocations: list[dict]):
-    
-    qr_link = f"{COUNTDOWN_BASE_URL}/?tray_id={tray_id}"
-
-    y = 15
-    lines = ""
-
-    for alloc in allocations:
-        lines += f'TEXT 10,{y},"0",0,6,6,"{alloc["school"]} {alloc["n_trays"]}"\n'
-        y += 12  # compact spacing
-
-    return f"""
-SIZE 50 mm, 21 mm
-GAP 1 mm, 0 mm
-SPEED 4
-DENSITY 15
-CLS
-{lines}
-QRCODE 300,5,L,3,A,0,"{qr_link}"
-PRINT 1,1
-"""
-
-# ============================================================
-# MAIN DELIVERY SCAN FUNCTION
-# ============================================================
-
-def process_delivery_scan(tray_id: str):
-    
-    TOTAL_TRAYS = 10
-
-    schools = load_schools()  # sorted by distance
-
-    allocations = []
-    remaining = TOTAL_TRAYS
-
-    for school in schools:
-        school_name = school["name"]
-        requirement = school["student_count"]
-
-        if requirement <= 0:
-            continue
-
-        take = min(requirement, remaining)
-
-        allocations.append({
-            "school": school_name,
-            "n_trays": take
-        })
-
-        remaining -= take
-
-        if remaining == 0:
-            break
-
-    if remaining > 0:
-        raise Exception("Not enough total student_count across schools.")
-
-    # Only mark tray as delivered (do NOT insert school)
-    with engine.begin() as conn:
-        conn.execute(
-            text("""
-                UPDATE trays
-                SET delivery = TRUE,
-                    created_at_delivery = :now,
-                    created_date_delivery = :today
-                WHERE tray_id = :tray_id
-            """),
-            {
-                "tray_id": tray_id,
-                "now": datetime.utcnow(),
-                "today": date.today()
-            }
+def _get_local_db():
+    conn = sqlite3.connect(LOCAL_DB_PATH, timeout=5)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS pending_scans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT NOT NULL,
+            step TEXT NOT NULL,
+            created_at TEXT NOT NULL
         )
+    """)
+    conn.commit()
+    return conn
 
-    tspl = generate_delivery_tspl(tray_id, allocations)
-    db_create_print_job(tspl)
 
-    return {
-        "tray_id": tray_id,
-        "allocations": allocations
-    }
+def local_enqueue(code: str, step: str):
+    conn = _get_local_db()
+    conn.execute(
+        "INSERT INTO pending_scans (code, step, created_at) VALUES (?, ?, ?)",
+        (code, step, datetime.now().isoformat()),
+    )
+    conn.commit()
+    conn.close()
 
-# ─────────────────────────── OUTPUT HELPERS ──────────────────────────────────
+
+def _retry_pending():
+    """Background thread: retry pending scans every RETRY_INTERVAL seconds."""
+    while True:
+        time.sleep(RETRY_INTERVAL)
+        try:
+            conn = _get_local_db()
+            rows = conn.execute("SELECT id, code, step FROM pending_scans ORDER BY id").fetchall()
+            if not rows:
+                conn.close()
+                continue
+
+            for row_id, code, step in rows:
+                try:
+                    resp = requests.post(
+                        f"{API_BASE_URL}/api/scans",
+                        json={"code": code, "step": step},
+                        headers={"X-Scanner-Key": SCANNER_KEY},
+                        timeout=HTTP_TIMEOUT,
+                    )
+                    if resp.status_code == 200:
+                        conn.execute("DELETE FROM pending_scans WHERE id = ?", (row_id,))
+                        conn.commit()
+                        sys.stdout.write(f"[SYNC] Retried {code} ({step}) -> OK\n")
+                        sys.stdout.flush()
+                except requests.RequestException:
+                    break  # Network still down, stop retrying this cycle
+
+            conn.close()
+        except Exception as e:
+            sys.stdout.write(f"[SYNC] Error: {e}\n")
+            sys.stdout.flush()
+
+
+def start_retry_thread():
+    t = threading.Thread(target=_retry_pending, daemon=True)
+    t.start()
+
+
+# ============================================================
+# API CALL
+# ============================================================
+
+def post_scan(code: str, step: str) -> tuple[bool, str, dict]:
+    """
+    POST to /api/scans. Returns (ok, reason, data).
+    On network failure returns (False, "NETWORK_ERROR: ...", {}).
+    """
+    try:
+        resp = requests.post(
+            f"{API_BASE_URL}/api/scans",
+            json={"code": code, "step": step},
+            headers={"X-Scanner-Key": SCANNER_KEY},
+            timeout=HTTP_TIMEOUT,
+        )
+        body = resp.json()
+        if resp.status_code == 403:
+            return False, "AUTH_FAILED: Invalid scanner key", {}
+        if resp.status_code == 400:
+            return False, body.get("detail", "BAD_REQUEST"), {}
+        return body.get("ok", False), body.get("reason", ""), body.get("data") or {}
+    except requests.RequestException as e:
+        return False, f"NETWORK_ERROR: {e}", {}
+
+
+# ============================================================
+# OUTPUT HELPERS
+# ============================================================
 
 def now_str() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 
 def print_status(ok: bool, when: str, reason: str = ""):
     if ok:
@@ -189,6 +150,7 @@ def print_status(ok: bool, when: str, reason: str = ""):
     else:
         sys.stdout.write(f"GAGAL\n{when}\n{reason}\n\n\n")
     sys.stdout.flush()
+
 
 def play_sound(path: str):
     try:
@@ -202,11 +164,10 @@ def play_sound(path: str):
     except Exception:
         pass
 
-def warn(msg: str):
-    sys.stdout.write(f"[WARN] {msg}\n")
-    sys.stdout.flush()
 
-# ─────────────────────────── PARSING ─────────────────────────────────────────
+# ============================================================
+# PARSING
+# ============================================================
 
 def extract_code(raw: str) -> str:
     s = (raw or "").strip()
@@ -229,181 +190,77 @@ def extract_code(raw: str) -> str:
             return chunk
     return s
 
-# ─────────────────────────── RETRY ───────────────────────────────────────────
 
-def _exec_retry(fn):
-    last_err = None
-    for _ in range(DB_LOCK_RETRIES):
-        try:
-            return fn()
-        except OperationalError as e:
-            last_err = e
-            if any(kw in str(e).lower() for kw in ("locked", "busy")):
-                time.sleep(DB_LOCK_SLEEP)
-                continue
-            raise
-    raise last_err
-
-# ─────────────────────────── VALIDATORS ──────────────────────────────────────
-
-def _get_remote_item(code: str):
-    """Fetch receiving + processing booleans for a BHN code."""
-    if not remote_engine:
-        return None
-    with remote_engine.connect() as c:
-        return c.execute(
-            select(
-                remote_items.c.receiving,
-                remote_items.c.processing,
-            )
-            .where(remote_items.c.id == code)
-        ).first()
-
-def _get_remote_tray(tray_id: str):
-    """Fetch packing + delivery booleans for a TRY code."""
-    if not remote_engine:
-        return None
-    with remote_engine.connect() as c:
-        return c.execute(
-            select(
-                remote_trays.c.packing, 
-                remote_trays.c.delivery,
-                remote_trays.c.created_date_packing,
-                remote_trays.c.created_date_delivery,
-                )
-            .where(remote_trays.c.tray_id == tray_id)
-        ).first()
-
-def _is_remote_tray_registered(tray_id: str) -> bool:
-    """Check tray_items table to see if tray is registered."""
-    if not remote_engine:
-        return False
-    with remote_engine.connect() as c:
-        return c.execute(
-            select(remote_tray_items.c.tray_id)
-            .where(remote_tray_items.c.tray_id == tray_id)
-        ).first() is not None
-
-
-def validate_processing(code: str) -> tuple[bool, str]:
-    if not code:
-        return False, "EMPTY_SCAN"
-    if not code.startswith(BHN_PREFIX):
-        return False, f"NOT_AN_INGREDIENT_CODE (expected BHN-, got: {code[:8]})"
-    try:
-        row = _get_remote_item(code)
-    except Exception as e:
-        return False, f"SUPABASE_UNREACHABLE: {e}"
-    if row is None:
-        return False, "INGREDIENT_NOT_FOUND"
-    if not row.receiving:
-        return False, "NOT_RECEIVED"
-    if row.processing:
-        return False, "ALREADY_PROCESSED"
-    return True, ""
-
-
-def validate_packing(code: str) -> tuple[bool, str]:
-    if not code:
-        return False, "EMPTY_SCAN"
-    if not code.startswith(TRAY_PREFIX):
-        return False, f"NOT_A_TRAY_CODE (expected TRY-, got: {code[:8]})"
-    if len(code) != TRAY_LEN:
-        return False, f"INVALID_TRAY_ID_LENGTH (expected {TRAY_LEN}, got {len(code)})"
-    try:
-        registered = _is_remote_tray_registered(code)
-        row = _get_remote_tray(code)
-    except Exception as e:
-        return False, f"SUPABASE_UNREACHABLE: {e}"
-    if not registered:
-        return False, "TRAY_NOT_REGISTERED"
-    if row and row.packing:
-        if row.created_date_packing == date.today():
-            return False, "ALREADY_PACKED_TODAY"
-    return True, ""
-
-
-def validate_delivery(code: str) -> tuple[bool, str]:
-    if not code:
-        return False, "EMPTY_SCAN"
-    if not code.startswith(TRAY_PREFIX):
-        return False, f"NOT_A_TRAY_CODE (expected TRY-, got: {code[:8]})"
-    if len(code) != TRAY_LEN:
-        return False, f"INVALID_TRAY_ID_LENGTH (expected {TRAY_LEN}, got {len(code)})"
-    try:
-        registered = _is_remote_tray_registered(code)
-        row = _get_remote_tray(code)
-    except Exception as e:
-        return False, f"SUPABASE_UNREACHABLE: {e}"
-    if not registered:
-        return False, "TRAY_NOT_REGISTERED"
-    if not row or not row.packing:
-        return False, "NOT_PACKED"
-    if row.delivery:
-        if row.created_date_delivery == date.today():
-            return False, "ALREADY_DELIVERED_TODAY"
-    return True, ""
-
-
-# ─────────────────────────── MAIN RUNNER ─────────────────────────────────────
+# ============================================================
+# MAIN RUNNER
+# ============================================================
 
 def run_scanner(
     mode: str,
-    success_sound: str = SUCCESS_SOUND,
-    failed_sound:  str = FAILED_SOUND,
+    success_sound: str = "",
+    failed_sound: str = "",
 ):
     if mode not in ALLOWED_STEPS:
         raise ValueError(f"Invalid mode: {mode!r}. Must be one of: {sorted(ALLOWED_STEPS)}")
 
-    write_label = {"Processing": "processed", "Packing": "packed", "Delivery": "delivered"}[mode]
+    if not success_sound:
+        success_sound = SUCCESS_SOUND
+    if not failed_sound:
+        failed_sound = FAILED_SOUND
 
     sys.stdout.write(f"=== SCANNER MODE: {mode.upper()} ===\n")
+    sys.stdout.write(f"API: {API_BASE_URL}\n")
     sys.stdout.write("Scan now...\n\n")
     sys.stdout.flush()
 
-    init_db()
-    start_sync_thread()
-
-    validators = {
-        "Processing": validate_processing,
-        "Packing":    validate_packing,
-        "Delivery":   validate_delivery,
-    }
+    # Start background retry thread for offline queue
+    start_retry_thread()
 
     last_code = None
     last_time = 0.0
 
     for line in sys.stdin:
-        raw  = line.strip()
+        raw = line.strip()
         when = now_str()
         code = extract_code(raw)
 
+        # Debounce duplicate scans
         t = time.time()
         if code and code == last_code and (t - last_time) < DEBOUNCE_SECONDS:
             continue
         last_code, last_time = code, t
 
+        if not code:
+            play_sound(failed_sound)
+            print_status(False, when, "EMPTY_SCAN")
+            continue
+
         try:
-            ok, reason = validators[mode](code)
+            ok, reason, data = post_scan(code, mode)
+
+            if reason.startswith("NETWORK_ERROR"):
+                # Save to local queue for retry
+                local_enqueue(code, mode)
+                play_sound(failed_sound)
+                sys.stdout.write(f"OFFLINE QUEUED\n{when}\n{code} -> will retry\n\n\n")
+                sys.stdout.flush()
+                continue
 
             if not ok:
-                _exec_retry(lambda: local_enqueue_error(code or raw, mode, reason))
                 play_sound(failed_sound)
                 print_status(False, when, reason)
                 continue
 
-            _exec_retry(lambda: local_enqueue_scan(code, mode, write_label))
-            if mode == "Delivery":
-                process_delivery_scan(code)
             play_sound(success_sound)
             print_status(True, when)
 
+            # Show delivery allocations if present
+            if data and "allocations" in data:
+                for alloc in data["allocations"]:
+                    sys.stdout.write(f"  {alloc['school']}: {alloc['n_trays']} trays\n")
+                sys.stdout.flush()
+
         except Exception as e:
             err = f"EXCEPTION: {type(e).__name__}: {e}"
-            try:
-                local_enqueue_error(code or raw, mode, err)
-            except Exception:
-                pass
             play_sound(failed_sound)
             print_status(False, when, err)
-

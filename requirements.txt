@@ -1,12 +1,9 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-dotenv
 requests
-numpy
-Pillow
 sqlalchemy
-opencv-python-headless
-pyzbar
 psycopg2-binary
-streamlit
-pandas
+python-jose[cryptography]
+bcrypt
+pulp

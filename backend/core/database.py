@@ -13,17 +13,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ============================================================
-# STREAMLIT SECRETS BRIDGE
-# ============================================================
-try:
-    import streamlit as st
-    _db_url = st.secrets.get("DATABASE_URL")
-    if _db_url:
-        os.environ["DATABASE_URL"] = _db_url
-except Exception:
-    pass
-
-# ============================================================
 # ENGINES
 # ============================================================
 BASE_DIR      = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -47,7 +36,7 @@ if REMOTE_DB_URL:
         poolclass=NullPool
         )
 
-# engine = remote for Streamlit/receiving, local for scanner
+# engine = remote if available, else local
 engine = remote_engine if remote_engine else local_engine
 
 # ============================================================
@@ -76,7 +65,7 @@ local_scan_errors = Table(
 )
 
 # ============================================================
-# REMOTE TABLE REFERENCES (Supabase)
+# REMOTE TABLE REFERENCES (PostgreSQL)
 # ============================================================
 remote_metadata = MetaData()
 
@@ -141,6 +130,16 @@ remote_print_jobs = Table(
     Column("printed_at", DateTime, nullable=True),
 )
 
+# --- Users (JWT auth)
+remote_users = Table(
+    "users", remote_metadata,
+    Column("id",            Integer, primary_key=True, autoincrement=True),
+    Column("username",      String(50), nullable=False, unique=True),
+    Column("password_hash", String(255), nullable=False),
+    Column("role",          String(20), server_default="admin"),
+    Column("created_at",    DateTime, server_default=func.now()),
+)
+
 # ============================================================
 # INIT
 # ============================================================
@@ -178,11 +177,11 @@ def local_enqueue_error(code: str, step: str, reason: str) -> None:
             synced=0,
         ))
 
-# ---------- Remote helpers (receiving.py / Streamlit) ----------
+# ---------- Remote helpers ----------
 
 def db_insert_item(item_id: str, name: str, weight_g: int, unit: str = "g",
                    reason: Optional[str] = None) -> None:
-    """Insert a new ingredient into Supabase with receiving=True."""
+    """Insert a new ingredient with receiving=True."""
     with engine.begin() as c:
         c.execute(remote_items.insert().values(
             id=item_id,
@@ -196,7 +195,7 @@ def db_insert_item(item_id: str, name: str, weight_g: int, unit: str = "g",
         ))
 
 def db_register_tray(tray_id: str) -> None:
-    """Register a new tray in Supabase."""
+    """Register a new tray if not exists."""
     with engine.begin() as c:
         if not c.execute(
             select(remote_trays.c.tray_id).where(remote_trays.c.tray_id == tray_id)

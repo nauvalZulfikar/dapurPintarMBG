@@ -21,8 +21,9 @@ def load_schools_from_json(file_path: str) -> List[School]:
         for s in schools_data
     ]
 
-def fetch_trays_packed_times(db_session: Session) -> List[FoodTray]:
-    today = datetime.now().date()
+def fetch_trays_packed_times(db_session: Session, target_date=None) -> List[FoodTray]:
+    if target_date is None:
+        target_date = datetime.now().date()
     rows = db_session.execute(
         text("""
             SELECT tray_id, created_at_packing
@@ -30,12 +31,15 @@ def fetch_trays_packed_times(db_session: Session) -> List[FoodTray]:
             WHERE created_date_packing = :today
             ORDER BY created_at_packing ASC
         """),
-        {"today": str(today)}
+        {"today": str(target_date)}
     ).fetchall()
 
     food_trays: List[FoodTray] = []
-    for tray_id, created_at_str in rows:
-        prepared_time = datetime.fromisoformat(created_at_str)
+    for tray_id, created_at_val in rows:
+        if isinstance(created_at_val, str):
+            prepared_time = datetime.fromisoformat(created_at_val)
+        else:
+            prepared_time = created_at_val
         food_trays.append(FoodTray(tray_id=tray_id, prepared_time=prepared_time))
 
     return food_trays

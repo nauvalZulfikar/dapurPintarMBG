@@ -4,26 +4,24 @@ printer_poller.py
 Run this on the mini PC that is physically connected to the label printer.
 
 It will:
-- Poll your cloud bot (Render) every few seconds for print jobs.
+- Poll the FastAPI /print-queue endpoint every few seconds for print jobs.
 - Print any job it receives on the local Windows printer.
-- Notify cloud that the job has been printed.
+- Notify the API via /print-complete that the job has been printed.
 
-Run:
-    set CLOUD_BASE_URL=https://dapurpintarmbg.onrender.com
-    set CLOUD_PRINT_KEY=supersecret-mbg-key
-    set PRINTER_NAME=DPMBG_Paseh_PB830L
-    python printer_poller.py
+Env vars:
+    API_BASE_URL   = https://your-server.com
+    CLOUD_PRINT_KEY = your-print-api-key
+    PRINTER_NAME    = DPMBGPasehZP550
+    POLL_INTERVAL   = 2.0
 """
 
 import os
 import time
 import logging
-from backend.core.database import engine, remote_print_jobs
-from sqlalchemy import select, update, func
 
 import requests
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # --- Logging ---
@@ -34,10 +32,12 @@ logging.basicConfig(
 logger = logging.getLogger("printer_poller")
 
 # --- Config from env ---
-CLOUD_BASE_URL = os.getenv("DATABASE_URL")#, "https://dapurpintarmbg.onrender.com")
-PRINTER_NAME = os.getenv("PRINTER_NAME")#, "DPMBGPasehZP550")
-POLL_INTERVAL = float(os.getenv("POLL_INTERVAL", "2.0"))  # seconds
-PRINTER_LANG = os.getenv("PRINTER_LANG")#, "TSPL").upper()
+API_BASE_URL    = os.getenv("API_BASE_URL", "http://localhost:8000")
+CLOUD_PRINT_KEY = os.getenv("CLOUD_PRINT_KEY", "")
+PRINTER_NAME    = os.getenv("PRINTER_NAME", "DPMBGPasehZP550")
+POLL_INTERVAL   = float(os.getenv("POLL_INTERVAL", "2.0"))
+PRINTER_LANG    = os.getenv("PRINTER_LANG", "TSPL").upper()
+HTTP_TIMEOUT    = 10
 
 # --- Windows printing ---
 try:
@@ -48,11 +48,11 @@ except ImportError:
     win32print = None
     logger.error("pywin32 not installed. Install with: pip install pywin32")
 
+
 def send_raw_to_printer(data: str, printer_name: str):
     if not HAS_WIN32:
         raise RuntimeError("win32print not available (not on Windows or pywin32 missing).")
 
-    # Ensure newline at end
     if not data.endswith("\n"):
         data = data + "\n"
 
@@ -70,44 +70,52 @@ def send_raw_to_printer(data: str, printer_name: str):
         if hPrinter:
             win32print.ClosePrinter(hPrinter)
 
+
 def poll_once():
-    with engine.begin() as conn:
-        row = conn.execute(
-            select(remote_print_jobs)
-            .where(remote_print_jobs.c.printed == 0)
-            .order_by(remote_print_jobs.c.id.asc())
-            .limit(1)
-        ).first()
+    """Fetch one print job from API and print it."""
+    headers = {}
+    if CLOUD_PRINT_KEY:
+        headers["X-Print-Key"] = CLOUD_PRINT_KEY
 
-        if not row:
-            return
+    resp = requests.get(
+        f"{API_BASE_URL}/print-queue",
+        headers=headers,
+        timeout=HTTP_TIMEOUT,
+    )
+    resp.raise_for_status()
+    data = resp.json()
 
-        job = dict(row._mapping)
-        job_id = job["id"]
-        tspl = job["tspl"]
+    jobs = data.get("jobs", [])
+    if not jobs:
+        return
 
-        logger.info(f"Received print job id={job_id}")
+    job = jobs[0]
+    job_id = job["id"]
+    tspl = job["tspl"]
 
-        # Print
-        send_raw_to_printer(tspl, PRINTER_NAME)
+    logger.info(f"Received print job id={job_id}")
 
-        # Mark printed
-        conn.execute(
-            update(remote_print_jobs)
-            .where(remote_print_jobs.c.id == job_id)
-            .values(
-                printed=1,
-                printed_at=func.now()
-            )
-        )
+    # Print to local printer
+    send_raw_to_printer(tspl, PRINTER_NAME)
 
-        logger.info(f"Marked job {job_id} as printed")
+    # Mark as printed via API
+    resp = requests.post(
+        f"{API_BASE_URL}/print-complete",
+        json={"id": job_id},
+        headers=headers,
+        timeout=HTTP_TIMEOUT,
+    )
+    resp.raise_for_status()
+
+    logger.info(f"Marked job {job_id} as printed")
+
+
 def main():
     logger.info("Starting printer poller...")
-    logger.info(f"CLOUD_BASE_URL = {CLOUD_BASE_URL}")
+    logger.info(f"API_BASE_URL   = {API_BASE_URL}")
     logger.info(f"PRINTER_NAME   = {PRINTER_NAME}")
     logger.info(f"POLL_INTERVAL  = {POLL_INTERVAL} seconds")
-    logger.info(f"PRINTER_LANG  = {PRINTER_LANG}")
+    logger.info(f"PRINTER_LANG   = {PRINTER_LANG}")
 
     while True:
         try:
@@ -117,6 +125,7 @@ def main():
         except Exception as e:
             logger.error(f"[PRINT ERROR] {e}")
         time.sleep(POLL_INTERVAL)
+
 
 if __name__ == "__main__":
     main()
