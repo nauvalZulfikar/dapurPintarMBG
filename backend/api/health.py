@@ -12,10 +12,6 @@ def check_print_key(x_print_key: Optional[str]):
     if CLOUD_PRINT_KEY and x_print_key != CLOUD_PRINT_KEY:
         raise HTTPException(status_code=403, detail="Invalid print key")
 
-@router.get("/")
-def root():
-    return {"status": "ok"}
-
 @router.get("/kaithhealth")
 async def health_main():
     return {"status": "ok"}
