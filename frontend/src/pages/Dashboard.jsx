@@ -187,12 +187,13 @@ function HourlyActivity({ stats }) {
     <div className={`${CARD} p-4`}>
       <h3 className={`${HEADING} mb-4`}>Hourly Scan Activity</h3>
       <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
           <XAxis dataKey="hour" tickFormatter={(h) => `${h}:00`} tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 11 }} />
           <Tooltip formatter={(v) => [v, 'scans']} labelFormatter={(h) => `${h}:00`} />
-          <Bar dataKey="scans" fill="#1B3A6B" radius={[3, 3, 0, 0]} />
-        </BarChart>
+          <Line type="monotone" dataKey="scans" stroke="#1B3A6B" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+        </LineChart>
       </ResponsiveContainer>
     </div>
   )
