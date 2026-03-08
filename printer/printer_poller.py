@@ -37,7 +37,7 @@ CLOUD_PRINT_KEY = os.getenv("CLOUD_PRINT_KEY", "")
 PRINTER_NAME    = os.getenv("PRINTER_NAME", "DPMBGPasehZP550")
 POLL_INTERVAL   = float(os.getenv("POLL_INTERVAL", "2.0"))
 PRINTER_LANG    = os.getenv("PRINTER_LANG", "TSPL").upper()
-HTTP_TIMEOUT    = 10
+HTTP_TIMEOUT    = 35
 
 # --- Windows printing ---
 try:
