@@ -66,15 +66,13 @@ PRINT 1,1
 """
 
 def generate_zpl(item_id, name, weight_g):
-    return f"""
-^XA
+    return f"""^XA
 ^PW400
 ^LL168
-^BY2
-^FO47,30^BCN,80,Y,N,N
-^FD{item_id}^FS
-^XZ
-"""
+^CI28
+^BY2,2,60
+^FO30,10^BCN,60,Y,N,N^FD{item_id}^FS
+^XZ"""
 
 def generate_label(item_id, name, weight_g):
     printer_lang = os.getenv("PRINTER_LANG", "TSPL").upper()
