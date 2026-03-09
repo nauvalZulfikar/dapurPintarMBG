@@ -79,6 +79,7 @@ remote_items = Table(
     Column("weight_grams",            Integer),
     Column("unit",                    String),
     Column("reason",                  Text),
+    Column("kitchen_id",              String, nullable=True),   # multi-dapur support
     Column("receiving",               Boolean, default=False),
     Column("created_at_receiving",    DateTime),
     Column("created_date_receiving",  Date),
@@ -95,6 +96,7 @@ remote_trays = Table(
     Column("id",                    Integer, primary_key=True, autoincrement=True),
     Column("tray_id",               String, nullable=False, unique=True),
     Column("reason",                Text),
+    Column("kitchen_id",            String, nullable=True),   # multi-dapur support
     Column("packing",               Boolean, default=False),
     Column("created_at_packing",    DateTime),
     Column("created_date_packing",  Date),

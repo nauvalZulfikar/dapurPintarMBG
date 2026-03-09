@@ -1,9 +1,11 @@
+import io
 import json
 import os
 from datetime import date, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select, func, text
 
@@ -487,3 +489,98 @@ async def get_countdown(tray_id: str):
         "safe_until": safe_until,
         "allocations": allocations,
     }
+
+
+# ── Export Laporan Harian (Excel) ─────────────────────────────────────────────
+
+@router.get("/export/daily")
+async def export_daily(
+    date_filter: Optional[str] = Query(None, alias="date"),
+    user: dict = Depends(get_current_user),
+):
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+    except ImportError:
+        raise HTTPException(status_code=500, detail="openpyxl not installed. Run: pip install openpyxl")
+
+    target = date.fromisoformat(date_filter) if date_filter else date.today()
+
+    with engine.connect() as c:
+        items_rows = c.execute(text("""
+            SELECT id, name, weight_grams, unit,
+                   created_at_receiving, created_at_processing
+            FROM items
+            WHERE created_date_receiving = :d
+            ORDER BY created_at_receiving ASC
+        """), {"d": str(target)}).fetchall()
+
+        tray_rows = c.execute(text("""
+            SELECT tray_id, created_at_packing, created_at_delivery
+            FROM trays
+            WHERE created_date_packing = :d OR created_date_delivery = :d
+            ORDER BY created_at_packing ASC
+        """), {"d": str(target)}).fetchall()
+
+    wb = openpyxl.Workbook()
+
+    # ── Sheet 1: Summary ──
+    ws_sum = wb.active
+    ws_sum.title = "Ringkasan"
+    header_fill = PatternFill("solid", fgColor="1B3A6B")
+    header_font = Font(bold=True, color="FFFFFF")
+
+    ws_sum.append(["Laporan Harian MBG", str(target)])
+    ws_sum.append([])
+    ws_sum.append(["Metrik", "Jumlah"])
+    for cell in ws_sum[3]:
+        cell.font = header_font
+        cell.fill = header_fill
+
+    received  = sum(1 for r in items_rows)
+    processed = sum(1 for r in items_rows if r[5] is not None)
+    packed    = sum(1 for r in tray_rows if r[1] is not None)
+    delivered = sum(1 for r in tray_rows if r[2] is not None)
+
+    ws_sum.append(["Item Diterima",   received])
+    ws_sum.append(["Item Diproses",   processed])
+    ws_sum.append(["Tray Dipacking",  packed])
+    ws_sum.append(["Tray Dikirim",    delivered])
+    ws_sum.column_dimensions["A"].width = 20
+    ws_sum.column_dimensions["B"].width = 15
+
+    # ── Sheet 2: Items ──
+    ws_items = wb.create_sheet("Item Bahan")
+    headers = ["ID", "Nama", "Berat (g)", "Satuan", "Waktu Terima", "Waktu Proses"]
+    ws_items.append(headers)
+    for cell in ws_items[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    for r in items_rows:
+        ws_items.append([r[0], r[1], r[2], r[3],
+                         str(r[4]) if r[4] else "", str(r[5]) if r[5] else ""])
+    for col, width in zip(["A","B","C","D","E","F"], [16, 25, 10, 8, 22, 22]):
+        ws_items.column_dimensions[col].width = width
+
+    # ── Sheet 3: Trays ──
+    ws_trays = wb.create_sheet("Tray")
+    headers = ["Tray ID", "Waktu Packing", "Waktu Delivery"]
+    ws_trays.append(headers)
+    for cell in ws_trays[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    for r in tray_rows:
+        ws_trays.append([r[0], str(r[1]) if r[1] else "", str(r[2]) if r[2] else ""])
+    for col, width in zip(["A","B","C"], [16, 22, 22]):
+        ws_trays.column_dimensions[col].width = width
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    filename = f"laporan_mbg_{target}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

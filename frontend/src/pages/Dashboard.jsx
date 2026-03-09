@@ -436,10 +436,20 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Dashboard</h2>
-        <input
-          type="date" value={date} onChange={onDateChange}
-          className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            type="date" value={date} onChange={onDateChange}
+            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
+          />
+          <a
+            href={`/api/export/daily?date=${date}`}
+            target="_blank"
+            rel="noreferrer"
+            className="px-3 py-1.5 bg-brand text-white text-sm rounded hover:opacity-90 whitespace-nowrap"
+          >
+            Export Excel
+          </a>
+        </div>
       </div>
 
       {/* Metric cards */}
