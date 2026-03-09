@@ -110,12 +110,34 @@ def poll_once():
     logger.info(f"Marked job {job_id} as printed")
 
 
+def register_printers():
+    """Send list of available Windows printers to the API."""
+    if not HAS_WIN32:
+        return
+    try:
+        printers = [p[2] for p in win32print.EnumPrinters(
+            win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
+        )]
+        headers = {"X-Print-Key": CLOUD_PRINT_KEY} if CLOUD_PRINT_KEY else {}
+        requests.post(
+            f"{API_BASE_URL}/api/printer/register",
+            json={"printers": printers},
+            headers=headers,
+            timeout=HTTP_TIMEOUT,
+        )
+        logger.info(f"Registered {len(printers)} printer(s): {printers}")
+    except Exception as e:
+        logger.warning(f"Could not register printers: {e}")
+
+
 def main():
     logger.info("Starting printer poller...")
     logger.info(f"API_BASE_URL   = {API_BASE_URL}")
     logger.info(f"PRINTER_NAME   = {PRINTER_NAME}")
     logger.info(f"POLL_INTERVAL  = {POLL_INTERVAL} seconds")
     logger.info(f"PRINTER_LANG   = {PRINTER_LANG}")
+
+    register_printers()
 
     while True:
         try:
