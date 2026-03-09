@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from backend.utils.auth import get_current_user
 from backend.services.menu_optimizer import load_tkpi, optimize_week, DEFAULT_CONSTRAINTS, NUTRIENT_KEYS
+from backend.services.price_scraper import get_prices
 
 router = APIRouter()
 
@@ -82,3 +83,27 @@ async def list_foods(user: dict = Depends(get_current_user)):
         })
 
     return {"categories": by_category, "total": len(foods)}
+
+
+class PriceRequest(BaseModel):
+    keywords: list[str]
+
+
+@router.post("/menu/prices")
+async def fetch_prices(body: PriceRequest, _user: dict = Depends(get_current_user)):
+    """
+    Fetch market prices for a list of ingredient keywords from
+    Happyfresh, Segari, and Sayurbox, then return the average per 100g (IDR).
+    This is slow (~1-2s per keyword) — call sparingly.
+    """
+    if not body.keywords:
+        raise HTTPException(400, "keywords list is empty")
+    if len(body.keywords) > 50:
+        raise HTTPException(400, "Max 50 keywords per request")
+
+    prices = get_prices(body.keywords)
+    return {
+        "prices": {kw: p for kw, p in prices.items()},
+        "found": sum(1 for p in prices.values() if p is not None),
+        "not_found": [kw for kw, p in prices.items() if p is None],
+    }
