@@ -114,7 +114,7 @@ if os.path.isfile(os.path.join(_SPA_DIR, "SUCCESS.mp3")):
 
 # SPA fallback: serve index.html for all non-API routes
 @app.get("/{full_path:path}")
-async def serve_spa(_full_path: str):
+async def serve_spa(full_path: str):
     if os.path.isfile(_SPA_INDEX):
         return FileResponse(_SPA_INDEX)
     return {"detail": "Frontend not built. Run: cd frontend && npm run build"}
