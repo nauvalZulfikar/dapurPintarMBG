@@ -22,20 +22,29 @@ TKPI_PATH = os.path.join(
     "data", "tkpi.csv",
 )
 
-# Column name mapping (TKPI 2020 → internal keys)
+# Column name mapping (tkpi.csv headers → internal keys)
 COL_MAP = {
-    "KODE": "code",
-    "NAMA BAHAN": "name",
-    "ENERGI": "energy",
-    "PROTEIN": "protein",
-    "LEMAK": "fat",
-    "KH": "carbs",
-    "SERAT": "fiber",
-    "BESI": "iron",
-    "VIT_C": "vitc",
-    "KALSIUM": "calcium",
-    "HARGA PER-BERAT STANDAR": "price",
-    "BDD": "bdd",
+    "KODE":                   "code",
+    "NAMA BAHAN":             "name",
+    "BERAT STANDAR":          "berat_standar",
+    "BDD":                    "bdd",
+    "ENERGI":                 "energy",
+    "PROTEIN":                "protein",
+    "LEMAK":                  "fat",
+    "KH":                     "carbs",
+    "SERAT":                  "fiber",
+    "BESI":                   "iron",
+    "VIT_C":                  "vitc",
+    "KALSIUM":                "calcium",
+    "FOSFOR":                 "fosfor",
+    "NATRIUM":                "natrium",
+    "KALIUM":                 "kalium",
+    "SENG":                   "seng",
+    "THIAMIN":                "thiamin",
+    "RIBOFLAVIN":             "riboflavin",
+    "NIASIN":                 "niasin",
+    "RETINOL":                "retinol",
+    "HARGA PER-BERAT STANDAR": "price",  # IDR per berat standar (100g default)
 }
 
 NUTRIENT_KEYS = ["energy", "protein", "fat", "carbs", "fiber", "iron", "vitc", "calcium"]
@@ -51,7 +60,14 @@ def _safe_float(val: str) -> float:
         return 0.0
 
 
-def load_tkpi(path: str = TKPI_PATH) -> list[dict]:
+def load_tkpi(path: str = TKPI_PATH, db_prices: Optional[dict] = None) -> list[dict]:
+    """
+    Load TKPI CSV and return food items ready for LP optimization.
+
+    db_prices: optional dict {food_code: price_per_100g} from food_prices table.
+               When provided, overrides the CSV price column (which starts at 0).
+               Items with price=0 after overlay are excluded from optimization.
+    """
     items = []
     with open(path, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
@@ -67,8 +83,15 @@ def load_tkpi(path: str = TKPI_PATH) -> list[dict]:
                     continue
                 item[key] = _safe_float(row.get(csv_col, ""))
 
-            # Skip items with no price or no energy data
-            if item["price"] <= 0 or item["energy"] <= 0:
+            # Overlay DB price (per 100g) if available
+            if db_prices and code in db_prices:
+                item["price"] = float(db_prices[code])
+
+            # Skip items with no energy data
+            if item["energy"] <= 0:
+                continue
+            # Skip items with no price (can't optimize cost without price)
+            if item["price"] <= 0:
                 continue
 
             item["category"] = categorize_food(code, name)
