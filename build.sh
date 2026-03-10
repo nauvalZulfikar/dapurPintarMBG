@@ -4,8 +4,8 @@ set -e
 # Install Python dependencies
 pip install -r requirements.txt
 
-# Install Playwright + system dependencies (needed for price scraper on Linux)
-playwright install --with-deps chromium
+# Install Playwright system dependencies (Chromium binary installed at start time)
+playwright install-deps chromium
 
 # Build frontend
 cd frontend
