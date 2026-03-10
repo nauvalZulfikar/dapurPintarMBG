@@ -72,12 +72,12 @@ app.include_router(sse_router, prefix="/api")
 app.include_router(menu_router, prefix="/api")
 
 # Manual price scrape trigger (admin only, runs in background thread)
-from fastapi import Depends, BackgroundTasks
+import threading
+from fastapi import Depends
 from backend.utils.auth import get_current_user
 
 @app.post("/api/menu/prices/scrape")
 async def trigger_price_scrape(
-    background_tasks: BackgroundTasks,
     max_items: int = 0,
     _user: dict = Depends(get_current_user),
 ):
@@ -85,10 +85,11 @@ async def trigger_price_scrape(
     Manually trigger a price scrape run.
     max_items=0 → scrape all 1145 items (takes ~3-4 hours).
     max_items=N → scrape first N items (for testing).
-    Runs in the background — poll /api/menu/prices/status to track progress.
+    Runs in a daemon thread — poll /api/menu/prices/status to track progress.
     """
     from backend.services.price_scheduler import run_price_scrape
-    background_tasks.add_task(run_price_scrape, max_items=max_items)
+    t = threading.Thread(target=run_price_scrape, kwargs={"max_items": max_items}, daemon=True)
+    t.start()
     return {
         "ok": True,
         "message": f"Price scrape started in background ({'all items' if max_items == 0 else f'{max_items} items'}). Check /api/menu/prices/status for progress.",
