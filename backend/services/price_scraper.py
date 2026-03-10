@@ -1,247 +1,260 @@
 # backend/services/price_scraper.py
 """
-Price scraper for Indonesian grocery platforms.
-Fetches ingredient prices from Happyfresh, Segari, Sayurbox.
-For internal MBG kitchen menu optimizer use only.
+Price scraper for Indonesian grocery market prices.
+Uses Playwright headless browser to scrape Sayurbox product search results.
+
+Sayurbox is the only reliably scrapable source — Happyfresh requires city
+context, Segari blocks bots, Tokopedia/Shopee require auth tokens.
 
 Usage:
     from backend.services.price_scraper import get_prices
     prices = get_prices(["ayam", "beras", "tempe"])
-    # -> {"ayam": 35000, "beras": 12000, "tempe": 8000}  (per 100g, IDR)
+    # -> {"ayam": 2800.0, "beras": 1250.0, "tempe": 850.0}  (per 100g, IDR)
+
+Requirements:
+    pip install playwright
+    playwright install chromium
 """
 import re
 import time
-import json
 import logging
-import difflib
 from typing import Optional
-from urllib.parse import quote_plus
-
-import requests
 
 logger = logging.getLogger(__name__)
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
-}
 
 # ------------------------------------------------------------------ #
 # Helpers
 # ------------------------------------------------------------------ #
 
 def _parse_price(text: str) -> Optional[float]:
-    """Extract numeric price from strings like 'Rp 12.500' or '12500'."""
-    cleaned = re.sub(r"[^\d]", "", text)
+    """Extract numeric IDR value from strings like 'Rp18.900' or '18900'."""
+    cleaned = re.sub(r"[^\d]", "", str(text))
     return float(cleaned) if cleaned else None
 
 
 def _normalize_to_100g(price: float, weight_g: float) -> float:
-    """Convert price/weight to price per 100 g."""
     return (price / weight_g) * 100 if weight_g > 0 else price
 
 
-def _best_match(query: str, candidates: list[str], threshold: float = 0.5) -> Optional[str]:
-    """Return the best fuzzy-matching candidate or None."""
-    q = query.lower()
-    matches = difflib.get_close_matches(q, [c.lower() for c in candidates], n=1, cutoff=threshold)
-    if not matches:
-        return None
-    idx = [c.lower() for c in candidates].index(matches[0])
-    return candidates[idx]
-
-
-# ------------------------------------------------------------------ #
-# Happyfresh  (REST API — uses internal search endpoint)
-# ------------------------------------------------------------------ #
-
-def _scrape_happyfresh(keyword: str) -> Optional[float]:
-    """
-    Happyfresh has a JSON search endpoint used by their SPA.
-    Returns price per 100 g (IDR) or None.
-    """
-    try:
-        url = (
-            f"https://www.happyfresh.id/api/v3/search?"
-            f"query={quote_plus(keyword)}&page=1&per_page=5"
-        )
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        if r.status_code != 200:
-            logger.debug("Happyfresh %s → HTTP %s", keyword, r.status_code)
-            return None
-        data = r.json()
-
-        products = data.get("data", {}).get("products", [])
-        if not products:
-            return None
-
-        # pick first product whose name roughly matches
-        names = [p.get("name", "") for p in products]
-        best = _best_match(keyword, names)
-        if not best:
-            return None
-        prod = products[[p["name"] for p in products].index(best)]
-
-        price = _parse_price(str(prod.get("price", 0)))
-        weight_text = prod.get("unit_of_measure", "100g")
-        weight_g = _extract_grams(weight_text)
-        if price and weight_g:
-            return _normalize_to_100g(price, weight_g)
-    except Exception as e:
-        logger.debug("Happyfresh error for '%s': %s", keyword, e)
-    return None
-
-
-# ------------------------------------------------------------------ #
-# Segari  (public search endpoint)
-# ------------------------------------------------------------------ #
-
-def _scrape_segari(keyword: str) -> Optional[float]:
-    """
-    Segari exposes a product search endpoint.
-    Returns price per 100 g (IDR) or None.
-    """
-    try:
-        url = (
-            f"https://segari.id/api/v1/product/search?"
-            f"keyword={quote_plus(keyword)}&limit=5"
-        )
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        if r.status_code != 200:
-            logger.debug("Segari %s → HTTP %s", keyword, r.status_code)
-            return None
-        data = r.json()
-
-        products = (
-            data.get("data", {}).get("products", [])
-            or data.get("data", [])
-        )
-        if not products:
-            return None
-
-        names = [p.get("name", "") for p in products]
-        best = _best_match(keyword, names)
-        if not best:
-            return None
-        prod = products[[p.get("name", "") for p in products].index(best)]
-
-        price = _parse_price(str(prod.get("price", prod.get("sale_price", 0))))
-        weight_g = _extract_grams(
-            prod.get("unit", prod.get("weight_unit", "100g"))
-        )
-        if price and weight_g:
-            return _normalize_to_100g(price, weight_g)
-    except Exception as e:
-        logger.debug("Segari error for '%s': %s", keyword, e)
-    return None
-
-
-# ------------------------------------------------------------------ #
-# Sayurbox  (search API)
-# ------------------------------------------------------------------ #
-
-def _scrape_sayurbox(keyword: str) -> Optional[float]:
-    """
-    Sayurbox public search endpoint.
-    Returns price per 100 g (IDR) or None.
-    """
-    try:
-        url = (
-            f"https://www.sayurbox.com/api/products/search?"
-            f"q={quote_plus(keyword)}&limit=5"
-        )
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        if r.status_code != 200:
-            logger.debug("Sayurbox %s → HTTP %s", keyword, r.status_code)
-            return None
-        data = r.json()
-
-        products = data.get("data", data.get("products", []))
-        if isinstance(data, list):
-            products = data
-
-        if not products:
-            return None
-
-        names = [p.get("name", p.get("productName", "")) for p in products]
-        best = _best_match(keyword, names)
-        if not best:
-            return None
-        idx = [n.lower() for n in names].index(best.lower())
-        prod = products[idx]
-
-        price = _parse_price(
-            str(prod.get("price", prod.get("finalPrice", prod.get("sellingPrice", 0))))
-        )
-        weight_g = _extract_grams(
-            prod.get("unit", prod.get("weight", prod.get("packagingUnit", "100g")))
-        )
-        if price and weight_g:
-            return _normalize_to_100g(price, weight_g)
-    except Exception as e:
-        logger.debug("Sayurbox error for '%s': %s", keyword, e)
-    return None
-
-
-# ------------------------------------------------------------------ #
-# Weight extraction helper
-# ------------------------------------------------------------------ #
-
 def _extract_grams(text: str) -> Optional[float]:
     """
-    Parse weight strings like '500 gr', '1 kg', '250g', '1 liter (approx 1000g)'.
-    Returns grams as float, defaults to 100 if unrecognised.
+    Parse weight from strings like '500 gr', '1 kg', '250g'.
+    Returns None if the string doesn't contain a recognisable weight unit
+    (so the caller can fall back to _guess_weight_g).
     """
     if not text:
-        return 100.0
-    text = str(text).lower().replace(",", ".")
-    # kg
-    m = re.search(r"(\d+\.?\d*)\s*kg", text)
+        return None
+    t = str(text).lower().replace(",", ".")
+    # Must contain a weight unit to be trusted
+    m = re.search(r"(\d+\.?\d*)\s*kg", t)
     if m:
         return float(m.group(1)) * 1000
-    # g / gr / gram
-    m = re.search(r"(\d+\.?\d*)\s*g(?:r(?:am)?)?", text)
-    if m:
-        return float(m.group(1))
-    # ml / liter (assume 1ml ≈ 1g for liquids — rough)
-    m = re.search(r"(\d+\.?\d*)\s*(?:ml|liter|litre|l\b)", text)
+    m = re.search(r"(\d+\.?\d*)\s*g(?:r(?:am)?)?", t)
     if m:
         val = float(m.group(1))
-        return val * 1000 if val < 100 else val
-    # bare number → assume grams
-    m = re.search(r"(\d+\.?\d*)", text)
+        return val if val >= 10 else None   # ignore tiny values like "3g"
+    m = re.search(r"(\d+\.?\d*)\s*(?:ml|liter|litre|l\b)", t)
     if m:
-        return float(m.group(1))
-    return 100.0
+        val = float(m.group(1))
+        return val * 1000 if val < 10 else val
+    return None   # no weight unit found → caller uses typical weight
+
+
+def _best_match_score(query: str, candidates: list[str]) -> tuple[Optional[str], float]:
+    """Return best fuzzy match and its similarity score."""
+    if not candidates:
+        return None, 0.0
+    q = query.lower()
+    scored = [(c, difflib.SequenceMatcher(None, q, c.lower()).ratio()) for c in candidates]
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return scored[0]
+
+
+# ------------------------------------------------------------------ #
+# Sayurbox — Playwright DOM scraper
+# ------------------------------------------------------------------ #
+
+def _scrape_sayurbox_playwright(keyword: str) -> list[dict]:
+    """
+    Launch headless Chromium in a subprocess to avoid asyncio/IocpProactor
+    conflicts when called from within a FastAPI/asyncio process on Windows.
+    Returns list of {name, price, weight_text} dicts.
+    """
+    import json
+    import subprocess
+    import sys
+
+    # Mini script that runs playwright in a clean process and prints JSON
+    script = r"""
+import sys, re, json
+from playwright.sync_api import sync_playwright
+
+keyword = sys.argv[1]
+results = []
+try:
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
+        page = browser.new_page(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        )
+        url = f"https://www.sayurbox.com/search?q={keyword.replace(' ', '+')}"
+        page.goto(url, timeout=30000, wait_until="commit")
+        page.wait_for_selector("text=Rp", timeout=20000)
+        page.wait_for_timeout(500)
+        content = page.content()
+        browser.close()
+
+        tokens = re.findall(r'font-family: Geist[^;]+;">([^<]{1,200})</div>', content)
+        i = 0
+        while i < len(tokens):
+            tok = tokens[i].strip()
+            if tok.startswith("Rp"):
+                raw = re.sub(r"[^\d]", "", tok)
+                price = float(raw) if raw else 0
+                name = tokens[i + 1].strip() if i + 1 < len(tokens) else ""
+                weight_text = tokens[i + 2].strip() if i + 2 < len(tokens) else ""
+                if price > 500 and name and not name.startswith("Rp"):
+                    results.append({"name": name, "price": price, "weight_text": weight_text})
+                i += 3
+            else:
+                i += 1
+except Exception as e:
+    pass
+
+print(json.dumps(results))
+"""
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", script, keyword],
+            capture_output=True, text=True, timeout=60,
+        )
+        if proc.returncode == 0 and proc.stdout.strip():
+            all_results = json.loads(proc.stdout.strip())
+            kw_lower = keyword.lower()
+            matched = [r for r in all_results if kw_lower in r["name"].lower()]
+            return matched if matched else all_results[:5]
+    except Exception as e:
+        logger.debug("Sayurbox subprocess error for '%s': %s", keyword, e)
+
+    return []
+
+
+def _parse_sayurbox_html(content: str, keyword: str) -> list[dict]:
+    """
+    Parse Sayurbox search result HTML.
+
+    Sayurbox uses React Native Web with inline styles (Geist font).
+    Each product card renders as consecutive divs with text:
+        Rp<price>  →  <product name>  →  <weight text>
+
+    We extract all Geist-font text nodes, then find consecutive
+    (price, name, weight) triples.
+    """
+    # Extract all text content from Geist-font divs (product card fields)
+    tokens = re.findall(r'font-family: Geist[^;]+;">([^<]{1,200})</div>', content)
+
+    results = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i].strip()
+        # Price token: starts with "Rp"
+        if tok.startswith("Rp"):
+            price = _parse_price(tok)
+            name = tokens[i + 1].strip() if i + 1 < len(tokens) else ""
+            weight_text = tokens[i + 2].strip() if i + 2 < len(tokens) else ""
+            # Validate: name should not start with Rp (another price)
+            if price and price > 500 and name and not name.startswith("Rp"):
+                results.append({"name": name, "price": price, "weight_text": weight_text})
+            i += 3
+        else:
+            i += 1
+
+    # Filter to items whose name contains the keyword (case-insensitive)
+    kw_lower = keyword.lower()
+    matched = [r for r in results if kw_lower in r["name"].lower()]
+
+    # Fall back to all results if no exact match (e.g. brand names)
+    return matched if matched else results[:5]
+
+
+# ------------------------------------------------------------------ #
+# Price-per-100g estimator
+# ------------------------------------------------------------------ #
+
+# Typical package sizes for Indonesian grocery items (grams)
+# Used when no weight info is available in search results
+TYPICAL_WEIGHTS = {
+    "ayam": 500,
+    "ikan": 500,
+    "daging": 500,
+    "sapi": 500,
+    "udang": 500,
+    "telur": 600,   # 10-butir box
+    "tempe": 300,
+    "tahu": 400,
+    "kangkung": 250,
+    "bayam": 250,
+    "wortel": 500,
+    "tomat": 500,
+    "kentang": 500,
+    "beras": 5000,
+    "mie": 500,
+    "tepung": 1000,
+    "gula": 1000,
+    "minyak": 1000,
+    "kacang": 500,
+    "pisang": 1000,
+    "jeruk": 1000,
+    "apel": 1000,
+}
+
+
+def _guess_weight_g(keyword: str) -> float:
+    """Guess typical package size based on keyword."""
+    kw_lower = keyword.lower()
+    for k, w in TYPICAL_WEIGHTS.items():
+        if k in kw_lower:
+            return float(w)
+    return 500.0  # default 500g
+
+
+def _price_to_100g(price_idr: float, keyword: str, weight_text: str = "") -> float:
+    """Convert a product price to IDR per 100g."""
+    weight_g = _extract_grams(weight_text) if weight_text else None
+    if weight_g is None:
+        weight_g = _guess_weight_g(keyword)
+    return _normalize_to_100g(price_idr, weight_g)
 
 
 # ------------------------------------------------------------------ #
 # Public interface
 # ------------------------------------------------------------------ #
 
-def get_price_for_keyword(keyword: str, delay: float = 0.5) -> Optional[float]:
+def get_price_for_keyword(keyword: str) -> Optional[float]:
     """
-    Try all three sources. Return average of those that succeed.
-    Returns price per 100 g (IDR) or None if all fail.
+    Scrape Sayurbox for `keyword`, return average price per 100g (IDR).
+    Returns None if not found.
     """
-    results = []
-
-    for scraper_fn in [_scrape_happyfresh, _scrape_segari, _scrape_sayurbox]:
-        price = scraper_fn(keyword)
-        if price and price > 0:
-            results.append(price)
-        time.sleep(delay)
-
-    if not results:
+    products = _scrape_sayurbox_playwright(keyword)
+    if not products:
+        logger.info("Price [%s] = not found", keyword)
         return None
-    return sum(results) / len(results)
+
+    prices_per_100g = [
+        _price_to_100g(p["price"], keyword, p.get("weight_text", ""))
+        for p in products
+        if p.get("price") and p["price"] > 0
+    ]
+    if not prices_per_100g:
+        return None
+
+    avg = sum(prices_per_100g) / len(prices_per_100g)
+    logger.info("Price [%s] = Rp %.0f /100g (from %d results)", keyword, avg, len(products))
+    return avg
 
 
-def get_prices(keywords: list[str], delay: float = 0.5) -> dict[str, Optional[float]]:
+def get_prices(keywords: list[str], delay: float = 1.0) -> dict[str, Optional[float]]:
     """
     Fetch prices for a list of ingredient keywords.
     Returns dict: keyword -> price_per_100g_idr (or None if not found).
@@ -249,12 +262,15 @@ def get_prices(keywords: list[str], delay: float = 0.5) -> dict[str, Optional[fl
     Example:
         get_prices(["ayam broiler", "beras putih", "tempe"])
         # -> {"ayam broiler": 3200.0, "beras putih": 1250.0, "tempe": 850.0}
+
+    Note: Each keyword takes ~5-8 seconds (Playwright page load).
+          For 10 keywords expect ~60-80s total.
     """
     out = {}
     for kw in keywords:
-        price = get_price_for_keyword(kw, delay=delay)
-        out[kw] = price
-        logger.info("Price [%s] = %s IDR/100g", kw, f"Rp {price:.0f}" if price else "not found")
+        out[kw] = get_price_for_keyword(kw)
+        if delay > 0:
+            time.sleep(delay)
     return out
 
 
@@ -266,17 +282,15 @@ if __name__ == "__main__":
     import sys
     logging.basicConfig(level=logging.INFO)
     test_keywords = sys.argv[1:] if len(sys.argv) > 1 else [
-        "ayam broiler",
-        "beras putih",
+        "ayam",
+        "beras",
         "tempe",
-        "tahu putih",
         "kangkung",
-        "telur ayam",
-        "pisang ambon",
-        "wortel",
+        "telur",
     ]
-    print("Fetching prices (this may take ~30s)...\n")
-    prices = get_prices(test_keywords)
+    print(f"Fetching prices for: {test_keywords}")
+    print("(Each keyword ~5-8s via Playwright headless browser)\n")
+    prices = get_prices(test_keywords, delay=0.5)
     print("\n=== RESULTS ===")
     for kw, p in prices.items():
         if p:
