@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from backend.utils.auth import get_current_user
 from backend.services.menu_optimizer import load_tkpi, optimize_week, DEFAULT_CONSTRAINTS, NUTRIENT_KEYS
 from backend.services.price_scraper import get_prices
+from backend.core.database import db_get_food_prices, db_get_price_scrape_status
 
 router = APIRouter()
 
@@ -28,9 +29,15 @@ async def optimize_menu(body: OptimizeRequest, user: dict = Depends(get_current_
     if not os.path.isfile(TKPI_PATH):
         raise HTTPException(500, "TKPI data file not found. Place tkpi.csv in data/")
 
-    foods = load_tkpi(TKPI_PATH)
+    # Overlay DB prices (scraped market prices) on top of CSV
+    try:
+        db_prices = db_get_food_prices()
+    except Exception:
+        db_prices = {}
+
+    foods = load_tkpi(TKPI_PATH, db_prices=db_prices)
     if not foods:
-        raise HTTPException(500, "No usable food items in TKPI data.")
+        raise HTTPException(500, "No usable food items. Run the price scraper first to populate prices.")
 
     week = optimize_week(
         foods,
@@ -59,30 +66,83 @@ async def optimize_menu(body: OptimizeRequest, user: dict = Depends(get_current_
         "weekly_total": round(weekly_total),
         "avg_nutrition": avg_nutrition,
         "constraints_used": {**DEFAULT_CONSTRAINTS, **(body.constraints or {})},
+        "prices_from_db": len(db_prices),
     }
 
 
 @router.get("/menu/foods")
-async def list_foods(user: dict = Depends(get_current_user)):
-    """Return all TKPI foods grouped by category for the UI."""
+async def list_foods(_user: dict = Depends(get_current_user)):
+    """Return all TKPI foods (with DB prices overlaid) grouped by category."""
     if not os.path.isfile(TKPI_PATH):
         raise HTTPException(500, "TKPI data file not found.")
 
-    foods = load_tkpi(TKPI_PATH)
-    by_category = {}
-    for f in foods:
+    try:
+        db_prices = db_get_food_prices()
+    except Exception:
+        db_prices = {}
+
+    # Load all items (even price=0 ones) for display
+    import csv, re
+    all_foods = []
+    def _sf(v):
+        if not v or str(v).strip() in ("", "-", "Tr", "tr"): return 0.0
+        try: return float(re.sub(r"[^\d.\-]", "", str(v).strip()))
+        except: return 0.0
+
+    from backend.services.menu_optimizer import categorize_food
+    with open(TKPI_PATH, "r", encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            code = (row.get("KODE") or "").strip()
+            name = (row.get("NAMA BAHAN") or "").strip()
+            if not code or not name: continue
+            price = float(db_prices.get(code, 0))
+            energy = _sf(row.get("ENERGI"))
+            if energy <= 0: continue
+            all_foods.append({
+                "code": code,
+                "name": name,
+                "price": price,
+                "has_price": price > 0,
+                "energy": energy,
+                "protein": _sf(row.get("PROTEIN")),
+                "category": categorize_food(code, name),
+            })
+
+    by_category: dict = {}
+    for f in all_foods:
         cat = f["category"]
         if cat not in by_category:
             by_category[cat] = []
-        by_category[cat].append({
-            "code": f["code"],
-            "name": f["name"],
-            "price": f["price"],
-            "energy": f["energy"],
-            "protein": f["protein"],
-        })
+        by_category[cat].append(f)
 
-    return {"categories": by_category, "total": len(foods)}
+    return {
+        "categories": by_category,
+        "total": len(all_foods),
+        "with_price": sum(1 for f in all_foods if f["has_price"]),
+        "without_price": sum(1 for f in all_foods if not f["has_price"]),
+    }
+
+
+@router.get("/menu/prices/status")
+async def price_scrape_status(_user: dict = Depends(get_current_user)):
+    """Return all scraped prices and last scrape time."""
+    try:
+        rows = db_get_price_scrape_status()
+        return {
+            "count": len(rows),
+            "prices": [
+                {
+                    "code": r["food_code"],
+                    "name": r["food_name"],
+                    "price_per_100g": r["price_per_100g"],
+                    "source": r["source"],
+                    "scraped_at": str(r["scraped_at"]) if r["scraped_at"] else None,
+                }
+                for r in rows[:200]
+            ],
+        }
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 
 class PriceRequest(BaseModel):
@@ -92,14 +152,13 @@ class PriceRequest(BaseModel):
 @router.post("/menu/prices")
 async def fetch_prices(body: PriceRequest, _user: dict = Depends(get_current_user)):
     """
-    Fetch market prices for a list of ingredient keywords from
-    Happyfresh, Segari, and Sayurbox, then return the average per 100g (IDR).
-    This is slow (~1-2s per keyword) — call sparingly.
+    Fetch market prices for a list of ingredient keywords from Sayurbox.
+    Slow (~8s per keyword) — use the scheduled scraper instead for bulk operations.
     """
     if not body.keywords:
         raise HTTPException(400, "keywords list is empty")
-    if len(body.keywords) > 50:
-        raise HTTPException(400, "Max 50 keywords per request")
+    if len(body.keywords) > 20:
+        raise HTTPException(400, "Max 20 keywords per request")
 
     prices = get_prices(body.keywords)
     return {

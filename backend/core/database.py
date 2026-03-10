@@ -142,6 +142,18 @@ remote_users = Table(
     Column("created_at",    DateTime, server_default=func.now()),
 )
 
+# --- Food prices (scraped market prices per ingredient code)
+remote_food_prices = Table(
+    "food_prices", remote_metadata,
+    Column("id",             Integer, primary_key=True, autoincrement=True),
+    Column("food_code",      String(20), nullable=False, unique=True),  # TKPI KODE
+    Column("food_name",      String(255), nullable=False),
+    Column("price_per_100g", Integer, nullable=False, server_default="0"),  # IDR per 100g
+    Column("source",         String(50), nullable=True),   # e.g. "sayurbox"
+    Column("scraped_at",     DateTime, nullable=True),
+    Column("updated_at",     DateTime, server_default=func.now()),
+)
+
 # ============================================================
 # INIT
 # ============================================================
@@ -149,6 +161,12 @@ remote_users = Table(
 def init_db():
     """Create local SQLite tables. Call once on scanner startup."""
     local_metadata.create_all(local_engine)
+
+
+def init_remote_db():
+    """Create remote PostgreSQL tables (food_prices etc). Safe to call on startup."""
+    if remote_engine:
+        remote_metadata.create_all(remote_engine)
 
 # ============================================================
 # HELPERS
@@ -227,3 +245,46 @@ def db_mark_printed(job_id: int) -> None:
             .where(remote_print_jobs.c.id == job_id)
             .values(printed=1, printed_at=func.now())
         )
+
+# ---------- Food prices ----------
+
+def db_upsert_food_price(food_code: str, food_name: str, price_per_100g: int, source: str = "sayurbox") -> None:
+    """Insert or update a food price by TKPI code."""
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    with engine.begin() as c:
+        stmt = pg_insert(remote_food_prices).values(
+            food_code=food_code,
+            food_name=food_name,
+            price_per_100g=price_per_100g,
+            source=source,
+            scraped_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["food_code"],
+            set_={
+                "food_name": stmt.excluded.food_name,
+                "price_per_100g": stmt.excluded.price_per_100g,
+                "source": stmt.excluded.source,
+                "scraped_at": stmt.excluded.scraped_at,
+                "updated_at": stmt.excluded.updated_at,
+            }
+        )
+        c.execute(stmt)
+
+
+def db_get_food_prices() -> dict[str, int]:
+    """Return all food prices as {food_code: price_per_100g}."""
+    with engine.connect() as c:
+        rows = c.execute(select(remote_food_prices.c.food_code, remote_food_prices.c.price_per_100g)).all()
+        return {r.food_code: r.price_per_100g for r in rows}
+
+
+def db_get_price_scrape_status() -> list[dict]:
+    """Return all food_prices rows for status display."""
+    with engine.connect() as c:
+        rows = c.execute(
+            select(remote_food_prices)
+            .order_by(remote_food_prices.c.scraped_at.desc())
+        ).all()
+        return [dict(r._mapping) for r in rows]

@@ -8,3 +8,5 @@ python-jose[cryptography]
 bcrypt
 pulp
 openpyxl
+apscheduler
+playwright
