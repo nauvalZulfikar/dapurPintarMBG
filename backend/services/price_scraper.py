@@ -120,7 +120,7 @@ try:
             else:
                 i += 1
 except Exception as e:
-    pass
+    print(json.dumps({"__error__": str(e)}), file=sys.stderr)
 
 print(json.dumps(results))
 """
@@ -129,13 +129,18 @@ print(json.dumps(results))
             [sys.executable, "-c", script, keyword],
             capture_output=True, text=True, timeout=60,
         )
-        if proc.returncode == 0 and proc.stdout.strip():
+        if proc.stderr.strip():
+            logger.warning("Sayurbox subprocess stderr for '%s': %s", keyword, proc.stderr.strip()[:500])
+        if proc.returncode != 0:
+            logger.warning("Sayurbox subprocess exit %d for '%s': %s", proc.returncode, keyword, proc.stderr.strip()[:300])
+            return []
+        if proc.stdout.strip():
             all_results = json.loads(proc.stdout.strip())
             kw_lower = keyword.lower()
             matched = [r for r in all_results if kw_lower in r["name"].lower()]
             return matched if matched else all_results[:5]
     except Exception as e:
-        logger.debug("Sayurbox subprocess error for '%s': %s", keyword, e)
+        logger.warning("Sayurbox subprocess error for '%s': %s", keyword, e)
 
     return []
 
