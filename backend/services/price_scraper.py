@@ -125,9 +125,11 @@ except Exception as e:
 print(json.dumps(results))
 """
     try:
+        import os
         proc = subprocess.run(
             [sys.executable, "-c", script, keyword],
             capture_output=True, text=True, timeout=60,
+            env=os.environ.copy(),
         )
         if proc.stderr.strip():
             logger.warning("Sayurbox subprocess stderr for '%s': %s", keyword, proc.stderr.strip()[:500])
