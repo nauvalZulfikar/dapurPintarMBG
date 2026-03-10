@@ -1,0 +1,5 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 100 100'>
+  <rect width='100' height='100' rx='20' fill='#1B3A6B'/>
+  <text x='50' y='62' font-family='Arial,sans-serif' font-size='52' font-weight='bold' fill='#C9A84C' text-anchor='middle'>D</text>
+  <text x='50' y='88' font-family='Arial,sans-serif' font-size='14' fill='#6BAFD6' text-anchor='middle'>MBG</text>
+</svg>
