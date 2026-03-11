@@ -228,7 +228,7 @@ function PriceStatusBanner({ onCountChange }) {
 // ── Food table ────────────────────────────────────────────────────────────────
 const TABLE_CATS = ['all', ...CAT_ORDER]
 
-function FoodTable({ priceCount }) {
+function FoodTable({ priceCount, excludedFoods, onExcludedChange }) {
   const [foods, setFoods]           = useState(null)
   const [loading, setLoading]       = useState(false)
   const [catFilter, setCatFilter]   = useState('all')
@@ -236,6 +236,15 @@ function FoodTable({ priceCount }) {
   const [onlyPriced, setOnlyPriced] = useState(false)
   const [page, setPage]             = useState(1)
   const PAGE_SIZE = 50
+
+  const toggleExclude = (code) => {
+    const next = new Set(excludedFoods)
+    if (next.has(code)) next.delete(code)
+    else next.add(code)
+    onExcludedChange(next)
+  }
+
+  const allExcluded = excludedFoods.size > 0
 
   const load = () => {
     setLoading(true)
@@ -298,6 +307,12 @@ function FoodTable({ priceCount }) {
               <input type="checkbox" checked={onlyPriced} onChange={(e) => { setOnlyPriced(e.target.checked); resetPage() }} className="rounded" />
               Hanya yang punya harga
             </label>
+            {allExcluded && (
+              <button onClick={() => onExcludedChange(new Set())}
+                className="text-xs text-red-500 hover:underline ml-1">
+                Reset {excludedFoods.size} exclude
+              </button>
+            )}
             <span className="ml-auto text-xs text-gray-400">{filtered.length} bahan</span>
           </div>
 
@@ -305,22 +320,30 @@ function FoodTable({ priceCount }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-                  <th className="text-left px-4 py-2.5 text-gray-500 font-semibold w-20">Kode</th>
+                  <th className="px-3 py-2.5 w-8 text-center" title="Ikutkan dalam optimizer"><span className="text-[10px] text-gray-400 font-semibold">Opt</span></th>
+                  <th className="text-left px-3 py-2.5 text-gray-500 font-semibold w-20">Kode</th>
                   <th className="text-left px-3 py-2.5 text-gray-500 font-semibold">Nama Bahan</th>
                   <th className="text-left px-3 py-2.5 text-gray-500 font-semibold w-28">Kategori</th>
                   <th className="text-right px-3 py-2.5 text-gray-500 font-semibold">Energi (kkal)</th>
                   <th className="text-right px-3 py-2.5 text-gray-500 font-semibold">Protein (g)</th>
                   <th className="text-right px-3 py-2.5 text-gray-500 font-semibold">Harga/100g</th>
-                  <th className="text-center px-3 py-2.5 text-gray-500 font-semibold w-20">Siap</th>
+                  <th className="text-center px-3 py-2.5 text-gray-500 font-semibold w-16">Siap</th>
                 </tr>
               </thead>
               <tbody>
                 {pageItems.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-8 text-gray-400">Tidak ada data</td></tr>
+                  <tr><td colSpan={8} className="text-center py-8 text-gray-400">Tidak ada data</td></tr>
                 )}
-                {pageItems.map((f) => (
-                  <tr key={f.code} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                    <td className="px-4 py-2 font-mono text-gray-400 text-[11px]">{f.code}</td>
+                {pageItems.map((f) => {
+                  const excluded = excludedFoods.has(f.code)
+                  return (
+                  <tr key={f.code} className={`border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${excluded ? 'opacity-40' : ''}`}>
+                    <td className="px-3 py-2 text-center">
+                      <input type="checkbox" checked={!excluded} onChange={() => toggleExclude(f.code)}
+                        className="rounded cursor-pointer"
+                        title={excluded ? 'Ikutkan dalam optimizer' : 'Exclude dari optimizer'} />
+                    </td>
+                    <td className="px-3 py-2 font-mono text-gray-400 text-[11px]">{f.code}</td>
                     <td className="px-3 py-2 text-gray-800 dark:text-gray-200 max-w-xs leading-snug">{f.name}</td>
                     <td className="px-3 py-2">
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${CAT_COLORS[f.category] || CAT_COLORS.other}`}>
@@ -336,7 +359,8 @@ function FoodTable({ priceCount }) {
                       {f.has_price ? <span className="text-green-500 font-bold">✓</span> : <span className="text-gray-300 dark:text-gray-600">—</span>}
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -392,6 +416,7 @@ export default function MenuPlanner() {
   const [budget, setBudget]           = useState(0)      // 0 = no limit
   const [priceMin, setPriceMin]       = useState(0)      // 0 = no min filter
   const [priceMax, setPriceMax]       = useState(0)      // 0 = no max filter
+  const [excludedFoods, setExcludedFoods] = useState(new Set())
   const [constraints, setConstraints] = useState({ ...DEFAULT_CONSTRAINTS })
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [result, setResult]           = useState(null)
@@ -409,6 +434,7 @@ export default function MenuPlanner() {
     const payload = { num_days: numDays, num_students: numStudents, constraints: constraintsPayload }
     if (priceMin > 0) payload.price_min = priceMin
     if (priceMax > 0) payload.price_max = priceMax
+    if (excludedFoods.size > 0) payload.excluded_foods = [...excludedFoods]
     optimizeMenu(payload)
       .then((res) => setResult(res.data))
       .catch((err) => {
@@ -560,7 +586,7 @@ export default function MenuPlanner() {
         </div>
       )}
 
-      <FoodTable priceCount={priceCount} />
+      <FoodTable priceCount={priceCount} excludedFoods={excludedFoods} onExcludedChange={setExcludedFoods} />
     </div>
   )
 }
