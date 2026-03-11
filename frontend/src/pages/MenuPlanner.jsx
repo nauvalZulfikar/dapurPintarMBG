@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { optimizeMenu, getPriceStatus, triggerScrape, listFoods } from '../api/menu'
+import { optimizeMenu, getPriceStatus, triggerScrape, listFoods, getScrapeIsRunning } from '../api/menu'
 
 // ── Shared styles ────────────────────────────────────────────────────────────
 const CARD = 'bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700'
@@ -135,20 +135,18 @@ function PriceStatusBanner({ onCountChange }) {
   const [lastAt, setLastAt]     = useState(null)
   const pollRef                 = useRef(null)
   const prevCountRef            = useRef(0)
-  const stableTicksRef          = useRef(0)
 
   const fetchStatus = () => {
-    getPriceStatus()
-      .then((r) => {
-        const n = r.data?.count || 0
+    Promise.all([getPriceStatus(), getScrapeIsRunning()])
+      .then(([statusRes, runningRes]) => {
+        const n = statusRes.data?.count || 0
         setCount(n)
         if (onCountChange) onCountChange(n)
-        const newest = r.data?.prices?.[0]?.scraped_at
+        const newest = statusRes.data?.prices?.[0]?.scraped_at
         if (newest) setLastAt(newest)
-        if (n > prevCountRef.current) { stableTicksRef.current = 0 }
-        else { stableTicksRef.current += 1 }
         prevCountRef.current = n
-        if (stableTicksRef.current >= 3) {
+        const stillRunning = runningRes.data?.running ?? false
+        if (!stillRunning) {
           setScraping(false)
           clearInterval(pollRef.current)
           pollRef.current = null
@@ -165,7 +163,6 @@ function PriceStatusBanner({ onCountChange }) {
 
   const startPolling = () => {
     clearInterval(pollRef.current)
-    stableTicksRef.current = 0
     pollRef.current = setInterval(fetchStatus, 5000)
   }
 
