@@ -22,6 +22,8 @@ class OptimizeRequest(BaseModel):
     num_students: int = 100
     constraints: Optional[dict] = None
     excluded_foods: Optional[list[str]] = None
+    price_min: Optional[float] = None   # IDR per 100g, inclusive lower bound
+    price_max: Optional[float] = None   # IDR per 100g, inclusive upper bound
 
 
 @router.post("/menu/optimize")
@@ -38,6 +40,12 @@ async def optimize_menu(body: OptimizeRequest, user: dict = Depends(get_current_
     foods = load_tkpi(TKPI_PATH, db_prices=db_prices)
     if not foods:
         raise HTTPException(500, "No usable food items. Run the price scraper first to populate prices.")
+
+    # Filter by price range if specified
+    if body.price_min is not None and body.price_min > 0:
+        foods = [f for f in foods if f["price"] >= body.price_min]
+    if body.price_max is not None and body.price_max > 0:
+        foods = [f for f in foods if f["price"] <= body.price_max]
 
     week = optimize_week(
         foods,
