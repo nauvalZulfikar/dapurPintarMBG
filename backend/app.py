@@ -76,24 +76,34 @@ import threading
 from fastapi import Depends
 from backend.utils.auth import get_current_user
 
+_scrape_thread: threading.Thread | None = None
+
+def _run_scrape_tracked(max_items: int):
+    global _scrape_thread
+    from backend.services.price_scheduler import run_price_scrape
+    try:
+        run_price_scrape(max_items=max_items)
+    finally:
+        _scrape_thread = None
+
 @app.post("/api/menu/prices/scrape")
 async def trigger_price_scrape(
     max_items: int = 0,
     _user: dict = Depends(get_current_user),
 ):
-    """
-    Manually trigger a price scrape run.
-    max_items=0 → scrape all 1145 items (takes ~3-4 hours).
-    max_items=N → scrape first N items (for testing).
-    Runs in a daemon thread — poll /api/menu/prices/status to track progress.
-    """
-    from backend.services.price_scheduler import run_price_scrape
-    t = threading.Thread(target=run_price_scrape, kwargs={"max_items": max_items}, daemon=True)
-    t.start()
+    global _scrape_thread
+    if _scrape_thread and _scrape_thread.is_alive():
+        return {"ok": False, "message": "Scrape sudah berjalan, tunggu selesai."}
+    _scrape_thread = threading.Thread(target=_run_scrape_tracked, kwargs={"max_items": max_items}, daemon=True)
+    _scrape_thread.start()
     return {
         "ok": True,
         "message": f"Price scrape started in background ({'all items' if max_items == 0 else f'{max_items} items'}). Check /api/menu/prices/status for progress.",
     }
+
+@app.get("/api/menu/prices/is-running")
+async def scrape_is_running(_user: dict = Depends(get_current_user)):
+    return {"running": bool(_scrape_thread and _scrape_thread.is_alive())}
 
 
 # Serve React SPA (production build)
