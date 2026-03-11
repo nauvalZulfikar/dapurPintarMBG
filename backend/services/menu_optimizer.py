@@ -212,6 +212,8 @@ def optimize_day(
         prob += lpSum(f["iron"] / 100 * x[f["code"]] for f in pool) >= c["min_iron"]
     if c.get("min_vitc", 0) > 0:
         prob += lpSum(f["vitc"] / 100 * x[f["code"]] for f in pool) >= c["min_vitc"]
+    if c.get("max_cost", 0) > 0:
+        prob += lpSum(f["price"] / 100 * x[f["code"]] for f in pool) <= c["max_cost"]
 
     # Must include at least one item from key categories
     for cat in ("staple", "animal", "vegetable"):

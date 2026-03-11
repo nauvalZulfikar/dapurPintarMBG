@@ -367,19 +367,44 @@ function FoodTable({ priceCount }) {
   )
 }
 
+const DEFAULT_CONSTRAINTS = {
+  min_energy: 600, min_protein: 15, max_fat: 25,
+  min_carbs: 80, min_fiber: 4, min_iron: 3, min_vitc: 15,
+}
+
+function NumField({ label, value, onChange, min, max, unit, disabled, w = 90 }) {
+  return (
+    <div>
+      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+        {label}{unit && <span className="text-gray-400 ml-1">({unit})</span>}
+      </label>
+      <input type="number" min={min} max={max} value={value} disabled={disabled}
+        onChange={(e) => onChange(+e.target.value || min)}
+        className={INPUT + (disabled ? ' cursor-not-allowed' : '')} style={{ width: w }} />
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function MenuPlanner() {
   const [numDays, setNumDays]         = useState(5)
   const [numStudents, setNumStudents] = useState(100)
+  const [budget, setBudget]           = useState(0)      // 0 = no limit
+  const [constraints, setConstraints] = useState({ ...DEFAULT_CONSTRAINTS })
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [result, setResult]           = useState(null)
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState(null)
   const [priceCount, setPriceCount]   = useState(0)
 
+  const setC = (key, val) => setConstraints((prev) => ({ ...prev, [key]: val }))
+
   const handleOptimize = () => {
     setLoading(true)
     setError(null)
-    optimizeMenu({ num_days: numDays, num_students: numStudents })
+    const constraintsPayload = { ...constraints }
+    if (budget > 0) constraintsPayload.max_cost = budget
+    optimizeMenu({ num_days: numDays, num_students: numStudents, constraints: constraintsPayload })
       .then((res) => setResult(res.data))
       .catch((err) => {
         const detail = err.response?.data?.detail
@@ -388,8 +413,14 @@ export default function MenuPlanner() {
       .finally(() => setLoading(false))
   }
 
+  const handleReset = () => {
+    setConstraints({ ...DEFAULT_CONSTRAINTS })
+    setBudget(0)
+  }
+
   const c = result?.constraints_used || {}
   const feasibleDays = result?.week.filter((d) => d.feasible) || []
+  const disabled = priceCount === 0
 
   return (
     <div>
@@ -398,35 +429,52 @@ export default function MenuPlanner() {
 
       <PriceStatusBanner onCountChange={setPriceCount} />
 
-      <div className={`${CARD} p-4 mb-6 ${priceCount === 0 ? 'opacity-50' : ''}`}>
-        <div className="flex flex-wrap items-end gap-4">
-          <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Jumlah Hari</label>
-            <input type="number" min={1} max={7} value={numDays} disabled={priceCount === 0}
-              onChange={(e) => setNumDays(Math.max(1, Math.min(7, +e.target.value || 5)))}
-              className={INPUT + (priceCount === 0 ? ' cursor-not-allowed' : '')} style={{ width: 80 }} />
+      <div className={`${CARD} p-4 mb-6 ${disabled ? 'opacity-50' : ''}`}>
+        {/* Basic params */}
+        <div className="flex flex-wrap items-end gap-4 mb-4">
+          <NumField label="Jumlah Hari" value={numDays} onChange={(v) => setNumDays(Math.max(1, Math.min(7, v)))} min={1} max={7} disabled={disabled} w={80} />
+          <NumField label="Jumlah Siswa" value={numStudents} onChange={(v) => setNumStudents(Math.max(1, v))} min={1} disabled={disabled} w={110} />
+          <NumField label="Budget Maks/Porsi" value={budget} onChange={(v) => setBudget(Math.max(0, v))} min={0} unit="Rp, 0=bebas" disabled={disabled} w={130} />
+          <div className="flex items-end gap-2">
+            <button onClick={handleOptimize} disabled={loading || disabled} className={BTN_PRIMARY}>
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Mengoptimasi...
+                </span>
+              ) : 'Optimasi Menu'}
+            </button>
+            <button onClick={() => setShowAdvanced((v) => !v)} disabled={disabled} className={BTN_SECONDARY}>
+              {showAdvanced ? 'Sembunyikan AKG ▲' : 'Atur AKG ▼'}
+            </button>
           </div>
-          <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Jumlah Siswa</label>
-            <input type="number" min={1} value={numStudents} disabled={priceCount === 0}
-              onChange={(e) => setNumStudents(Math.max(1, +e.target.value || 100))}
-              className={INPUT + (priceCount === 0 ? ' cursor-not-allowed' : '')} style={{ width: 120 }} />
-          </div>
-          <button onClick={handleOptimize} disabled={loading || priceCount === 0} className={BTN_PRIMARY}>
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                </svg>
-                Mengoptimasi...
-              </span>
-            ) : 'Optimasi Menu'}
-          </button>
         </div>
-        {priceCount === 0
-          ? <p className="text-xs text-red-500 dark:text-red-400 mt-2">✕ Tidak bisa dijalankan — scrape harga dulu di atas.</p>
-          : <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">LP memilih dari <strong>{priceCount} bahan</strong> yang sudah ada harga, minimasi biaya sambil memenuhi AKG.</p>
+
+        {/* Advanced: AKG constraints */}
+        {showAdvanced && (
+          <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Target AKG per Porsi (SD 7–12 tahun)</span>
+              <button onClick={handleReset} className="text-xs text-accent hover:underline">Reset Default</button>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <NumField label="Min Energi"  value={constraints.min_energy}  onChange={(v) => setC('min_energy', v)}  min={0} unit="kkal" disabled={disabled} />
+              <NumField label="Min Protein" value={constraints.min_protein} onChange={(v) => setC('min_protein', v)} min={0} unit="g"    disabled={disabled} />
+              <NumField label="Maks Lemak"  value={constraints.max_fat}     onChange={(v) => setC('max_fat', v)}     min={0} unit="g"    disabled={disabled} />
+              <NumField label="Min Karbo"   value={constraints.min_carbs}   onChange={(v) => setC('min_carbs', v)}   min={0} unit="g"    disabled={disabled} />
+              <NumField label="Min Serat"   value={constraints.min_fiber}   onChange={(v) => setC('min_fiber', v)}   min={0} unit="g"    disabled={disabled} />
+              <NumField label="Min Besi"    value={constraints.min_iron}    onChange={(v) => setC('min_iron', v)}    min={0} unit="mg"   disabled={disabled} />
+              <NumField label="Min Vit C"   value={constraints.min_vitc}    onChange={(v) => setC('min_vitc', v)}    min={0} unit="mg"   disabled={disabled} />
+            </div>
+          </div>
+        )}
+
+        {disabled
+          ? <p className="text-xs text-red-500 dark:text-red-400 mt-3">✕ Tidak bisa dijalankan — scrape harga dulu di atas.</p>
+          : <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">LP memilih dari <strong>{priceCount} bahan</strong> yang sudah ada harga, minimasi biaya sambil memenuhi AKG.</p>
         }
       </div>
 
