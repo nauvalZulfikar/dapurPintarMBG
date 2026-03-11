@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(rm:*)",
+      "Bash(npx vite:*)",
+      "Bash(mv:*)",
+      "Bash(grep -r \"import\" backend/api/*.py)",
+      "Bash(uvicorn backend.app:app --reload --host 0.0.0.0 --port 8000)",
+      "Bash(npm run build)",
+      "WebFetch(domain:logo.com)",
+      "WebFetch(domain:mbgsulteng.id)",
+      "WebFetch(domain:www.bgn.go.id)"
+    ]
+  }
+}
