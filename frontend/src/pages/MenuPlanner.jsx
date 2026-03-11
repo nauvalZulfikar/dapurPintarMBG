@@ -228,24 +228,12 @@ function PriceStatusBanner({ onCountChange }) {
 // ── Food table ────────────────────────────────────────────────────────────────
 const TABLE_CATS = ['all', ...CAT_ORDER]
 
-const NUTR_FILTERS = [
-  { key: 'energy',  label: 'Energi',  unit: 'kkal' },
-  { key: 'protein', label: 'Protein', unit: 'g' },
-  { key: 'fat',     label: 'Lemak',   unit: 'g' },
-  { key: 'carbs',   label: 'Karbo',   unit: 'g' },
-]
-
 function FoodTable({ priceCount }) {
   const [foods, setFoods]           = useState(null)
   const [loading, setLoading]       = useState(false)
   const [catFilter, setCatFilter]   = useState('all')
   const [search, setSearch]         = useState('')
   const [onlyPriced, setOnlyPriced] = useState(false)
-  const [priceMin, setPriceMin]     = useState('')
-  const [priceMax, setPriceMax]     = useState('')
-  const [nutrKey, setNutrKey]       = useState('energy')
-  const [nutrMin, setNutrMin]       = useState('')
-  const [nutrMax, setNutrMax]       = useState('')
   const [page, setPage]             = useState(1)
   const PAGE_SIZE = 50
 
@@ -267,10 +255,6 @@ function FoodTable({ priceCount }) {
     if (catFilter !== 'all' && f.category !== catFilter) return false
     if (onlyPriced && !f.has_price) return false
     if (search && !f.name.toLowerCase().includes(search.toLowerCase())) return false
-    if (priceMin !== '' && f.price < +priceMin) return false
-    if (priceMax !== '' && f.price > +priceMax) return false
-    if (nutrMin !== '' && (f[nutrKey] ?? 0) < +nutrMin) return false
-    if (nutrMax !== '' && (f[nutrKey] ?? 0) > +nutrMax) return false
     return true
   })
 
@@ -301,8 +285,7 @@ function FoodTable({ priceCount }) {
 
       {foods && (
         <>
-          {/* Row 1: search + category + checkbox */}
-          <div className="px-4 pt-3 pb-2 border-b border-gray-100 dark:border-gray-700 flex flex-wrap gap-2 items-center">
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex flex-wrap gap-2 items-center">
             <input type="text" placeholder="Cari nama bahan..." value={search}
               onChange={(e) => { setSearch(e.target.value); resetPage() }}
               className={INPUT + ' w-48'} />
@@ -316,36 +299,6 @@ function FoodTable({ priceCount }) {
               Hanya yang punya harga
             </label>
             <span className="ml-auto text-xs text-gray-400">{filtered.length} bahan</span>
-          </div>
-          {/* Row 2: price + nutrition filters */}
-          <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 flex flex-wrap gap-2 items-center">
-            <span className="text-xs text-gray-400 shrink-0">Harga/100g:</span>
-            <input type="number" placeholder="Min" value={priceMin} min={0}
-              onChange={(e) => { setPriceMin(e.target.value); resetPage() }}
-              className={INPUT + ' w-24'} />
-            <span className="text-xs text-gray-400">–</span>
-            <input type="number" placeholder="Maks" value={priceMax} min={0}
-              onChange={(e) => { setPriceMax(e.target.value); resetPage() }}
-              className={INPUT + ' w-24'} />
-            <span className="text-xs text-gray-400 ml-3 shrink-0">Nutrisi:</span>
-            <select value={nutrKey} onChange={(e) => { setNutrKey(e.target.value); resetPage() }} className={INPUT}>
-              {NUTR_FILTERS.map((nf) => (
-                <option key={nf.key} value={nf.key}>{nf.label} ({nf.unit})</option>
-              ))}
-            </select>
-            <input type="number" placeholder="Min" value={nutrMin} min={0}
-              onChange={(e) => { setNutrMin(e.target.value); resetPage() }}
-              className={INPUT + ' w-24'} />
-            <span className="text-xs text-gray-400">–</span>
-            <input type="number" placeholder="Maks" value={nutrMax} min={0}
-              onChange={(e) => { setNutrMax(e.target.value); resetPage() }}
-              className={INPUT + ' w-24'} />
-            {(priceMin || priceMax || nutrMin || nutrMax) && (
-              <button onClick={() => { setPriceMin(''); setPriceMax(''); setNutrMin(''); setNutrMax(''); resetPage() }}
-                className="text-xs text-accent hover:underline ml-1">
-                Reset filter
-              </button>
-            )}
           </div>
 
           <div className="overflow-x-auto">
@@ -437,6 +390,8 @@ export default function MenuPlanner() {
   const [numDays, setNumDays]         = useState(5)
   const [numStudents, setNumStudents] = useState(100)
   const [budget, setBudget]           = useState(0)      // 0 = no limit
+  const [priceMin, setPriceMin]       = useState(0)      // 0 = no min filter
+  const [priceMax, setPriceMax]       = useState(0)      // 0 = no max filter
   const [constraints, setConstraints] = useState({ ...DEFAULT_CONSTRAINTS })
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [result, setResult]           = useState(null)
@@ -451,7 +406,10 @@ export default function MenuPlanner() {
     setError(null)
     const constraintsPayload = { ...constraints }
     if (budget > 0) constraintsPayload.max_cost = budget
-    optimizeMenu({ num_days: numDays, num_students: numStudents, constraints: constraintsPayload })
+    const payload = { num_days: numDays, num_students: numStudents, constraints: constraintsPayload }
+    if (priceMin > 0) payload.price_min = priceMin
+    if (priceMax > 0) payload.price_max = priceMax
+    optimizeMenu(payload)
       .then((res) => setResult(res.data))
       .catch((err) => {
         const detail = err.response?.data?.detail
@@ -463,6 +421,8 @@ export default function MenuPlanner() {
   const handleReset = () => {
     setConstraints({ ...DEFAULT_CONSTRAINTS })
     setBudget(0)
+    setPriceMin(0)
+    setPriceMax(0)
   }
 
   const c = result?.constraints_used || {}
@@ -482,6 +442,8 @@ export default function MenuPlanner() {
           <NumField label="Jumlah Hari" value={numDays} onChange={(v) => setNumDays(Math.max(1, Math.min(7, v)))} min={1} max={7} disabled={disabled} w={80} />
           <NumField label="Jumlah Siswa" value={numStudents} onChange={(v) => setNumStudents(Math.max(1, v))} min={1} disabled={disabled} w={110} />
           <NumField label="Budget Maks/Porsi" value={budget} onChange={(v) => setBudget(Math.max(0, v))} min={0} unit="Rp, 0=bebas" disabled={disabled} w={130} />
+          <NumField label="Harga Min/100g" value={priceMin} onChange={(v) => setPriceMin(Math.max(0, v))} min={0} unit="Rp, 0=bebas" disabled={disabled} w={130} />
+          <NumField label="Harga Maks/100g" value={priceMax} onChange={(v) => setPriceMax(Math.max(0, v))} min={0} unit="Rp, 0=bebas" disabled={disabled} w={130} />
           <div className="flex items-end gap-2">
             <button onClick={handleOptimize} disabled={loading || disabled} className={BTN_PRIMARY}>
               {loading ? (
