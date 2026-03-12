@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { optimizeMenu, getPriceStatus, triggerScrape, listFoods, getScrapeIsRunning } from '../api/menu'
+import { optimizeMenu, getPriceStatus, triggerScrape, listFoods, getScrapeIsRunning, getAkgPresets } from '../api/menu'
 
 // ── Shared styles ────────────────────────────────────────────────────────────
 const CARD = 'bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700'
@@ -409,29 +409,107 @@ function NumField({ label, value, onChange, min, max, unit, disabled, w = 90 }) 
   )
 }
 
+// ── Age group presets (must match backend AKG_PRESETS keys) ──────────────────
+const AGE_GROUP_KEYS = [
+  'TK (4-6 tahun)',
+  'SD (7-9 tahun)',
+  'SD (10-12 tahun)',
+  'SMP (13-15 tahun)',
+  'SMA (16-18 tahun)',
+]
+
+// ── Group result block ────────────────────────────────────────────────────────
+function GroupResult({ group, numDays }) {
+  const c = group.constraints_used || {}
+  const feasible = group.week.filter((d) => d.feasible)
+  return (
+    <div className="mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div>
+          <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">{group.label}</h3>
+          <p className="text-xs text-gray-400">{group.num_students} siswa</p>
+        </div>
+        <div className="flex gap-3">
+          {[
+            { label: 'Per Siswa / Hari',    value: rp(feasible.length ? group.weekly_per_student / feasible.length : 0) },
+            { label: `Total ${numDays} Hari`, value: rp(group.weekly_total) },
+            { label: 'Rata Energi',         value: (group.avg_nutrition?.energy || 0) + ' kkal' },
+          ].map((s) => (
+            <div key={s.label} className={`${CARD} px-3 py-2 text-center min-w-[90px]`}>
+              <div className="text-[10px] text-gray-400 uppercase tracking-wide">{s.label}</div>
+              <div className="text-sm font-bold text-brand dark:text-accent">{s.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-3">
+        {group.week.map((day) => <DayCard key={day.day} day={day} constraints={c} />)}
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function MenuPlanner() {
   const [numDays, setNumDays]         = useState(5)
-  const [numStudents, setNumStudents] = useState(100)
-  const [budget, setBudget]           = useState(0)      // 0 = no limit
-  const [priceMin, setPriceMin]       = useState(0)      // 0 = no min filter
-  const [priceMax, setPriceMax]       = useState(0)      // 0 = no max filter
+  const [budget, setBudget]           = useState(0)
+  const [priceMin, setPriceMin]       = useState(0)
+  const [priceMax, setPriceMax]       = useState(0)
   const [excludedFoods, setExcludedFoods] = useState(new Set())
-  const [constraints, setConstraints] = useState({ ...DEFAULT_CONSTRAINTS })
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [result, setResult]           = useState(null)
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState(null)
   const [priceCount, setPriceCount]   = useState(0)
+  const [akgPresets, setAkgPresets]   = useState({})
 
-  const setC = (key, val) => setConstraints((prev) => ({ ...prev, [key]: val }))
+  // Multi-group state: array of { label, num_students, constraints, showAkg }
+  const [groups, setGroups] = useState([
+    { label: 'SD (7-9 tahun)', num_students: 100, constraints: { ...DEFAULT_CONSTRAINTS }, showAkg: false },
+  ])
+
+  useEffect(() => {
+    getAkgPresets().then((r) => {
+      setAkgPresets(r.data)
+      // apply correct preset for default group
+      setGroups((prev) => prev.map((g) => ({
+        ...g,
+        constraints: { ...(r.data[g.label] || DEFAULT_CONSTRAINTS) },
+      })))
+    }).catch(() => {})
+  }, [])
+
+  const setGroup = (idx, patch) =>
+    setGroups((prev) => prev.map((g, i) => i === idx ? { ...g, ...patch } : g))
+
+  const setGroupConstraint = (idx, key, val) =>
+    setGroup(idx, { constraints: { ...groups[idx].constraints, [key]: val } })
+
+  const addGroup = () =>
+    setGroups((prev) => [
+      ...prev,
+      { label: AGE_GROUP_KEYS[prev.length % AGE_GROUP_KEYS.length], num_students: 50, constraints: { ...DEFAULT_CONSTRAINTS }, showAkg: false },
+    ])
+
+  const removeGroup = (idx) =>
+    setGroups((prev) => prev.filter((_, i) => i !== idx))
+
+  const applyPreset = (idx, label) => {
+    const preset = akgPresets[label] || DEFAULT_CONSTRAINTS
+    setGroups((prev) => prev.map((g, i) => i === idx ? { ...g, label, constraints: { ...preset } } : g))
+  }
 
   const handleOptimize = () => {
     setLoading(true)
     setError(null)
-    const constraintsPayload = { ...constraints }
-    if (budget > 0) constraintsPayload.max_cost = budget
-    const payload = { num_days: numDays, num_students: numStudents, constraints: constraintsPayload }
+    const payload = {
+      num_days: numDays,
+      groups: groups.map((g) => {
+        const c = { ...g.constraints }
+        if (budget > 0) c.max_cost = budget
+        return { label: g.label, num_students: g.num_students, constraints: c }
+      }),
+    }
     if (priceMin > 0) payload.price_min = priceMin
     if (priceMax > 0) payload.price_max = priceMax
     if (excludedFoods.size > 0) payload.excluded_foods = [...excludedFoods]
@@ -444,29 +522,20 @@ export default function MenuPlanner() {
       .finally(() => setLoading(false))
   }
 
-  const handleReset = () => {
-    setConstraints({ ...DEFAULT_CONSTRAINTS })
-    setBudget(0)
-    setPriceMin(0)
-    setPriceMax(0)
-  }
-
-  const c = result?.constraints_used || {}
-  const feasibleDays = result?.week.filter((d) => d.feasible) || []
   const disabled = priceCount === 0
+  const totalStudents = groups.reduce((s, g) => s + g.num_students, 0)
 
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">Menu Planner</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Optimasi menu makan siang MBG — minimasi biaya, penuhi AKG anak SD.</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Optimasi menu makan siang MBG — minimasi biaya, penuhi AKG per kelompok umur.</p>
 
       <PriceStatusBanner onCountChange={setPriceCount} />
 
       <div className={`${CARD} p-4 mb-6 ${disabled ? 'opacity-50' : ''}`}>
-        {/* Basic params */}
+        {/* Global params */}
         <div className="flex flex-wrap items-end gap-4 mb-4">
           <NumField label="Jumlah Hari" value={numDays} onChange={(v) => setNumDays(Math.max(1, Math.min(7, v)))} min={1} max={7} disabled={disabled} w={80} />
-          <NumField label="Jumlah Siswa" value={numStudents} onChange={(v) => setNumStudents(Math.max(1, v))} min={1} disabled={disabled} w={110} />
           <NumField label="Budget Maks/Porsi" value={budget} onChange={(v) => setBudget(Math.max(0, v))} min={0} unit="Rp, 0=bebas" disabled={disabled} w={130} />
           <NumField label="Harga Min/100g" value={priceMin} onChange={(v) => setPriceMin(Math.max(0, v))} min={0} unit="Rp, 0=bebas" disabled={disabled} w={130} />
           <NumField label="Harga Maks/100g" value={priceMax} onChange={(v) => setPriceMax(Math.max(0, v))} min={0} unit="Rp, 0=bebas" disabled={disabled} w={130} />
@@ -482,34 +551,70 @@ export default function MenuPlanner() {
                 </span>
               ) : 'Optimasi Menu'}
             </button>
-            <button onClick={() => setShowAdvanced((v) => !v)} disabled={disabled} className={BTN_SECONDARY}>
-              {showAdvanced ? 'Sembunyikan AKG ▲' : 'Atur AKG ▼'}
-            </button>
           </div>
         </div>
 
-        {/* Advanced: AKG constraints */}
-        {showAdvanced && (
-          <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Target AKG per Porsi (SD 7–12 tahun)</span>
-              <button onClick={handleReset} className="text-xs text-accent hover:underline">Reset Default</button>
-            </div>
-            <div className="flex flex-wrap gap-4">
-              <NumField label="Min Energi"  value={constraints.min_energy}  onChange={(v) => setC('min_energy', v)}  min={0} unit="kkal" disabled={disabled} />
-              <NumField label="Min Protein" value={constraints.min_protein} onChange={(v) => setC('min_protein', v)} min={0} unit="g"    disabled={disabled} />
-              <NumField label="Maks Lemak"  value={constraints.max_fat}     onChange={(v) => setC('max_fat', v)}     min={0} unit="g"    disabled={disabled} />
-              <NumField label="Min Karbo"   value={constraints.min_carbs}   onChange={(v) => setC('min_carbs', v)}   min={0} unit="g"    disabled={disabled} />
-              <NumField label="Min Serat"   value={constraints.min_fiber}   onChange={(v) => setC('min_fiber', v)}   min={0} unit="g"    disabled={disabled} />
-              <NumField label="Min Besi"    value={constraints.min_iron}    onChange={(v) => setC('min_iron', v)}    min={0} unit="mg"   disabled={disabled} />
-              <NumField label="Min Vit C"   value={constraints.min_vitc}    onChange={(v) => setC('min_vitc', v)}    min={0} unit="mg"   disabled={disabled} />
-            </div>
+        {/* Age groups */}
+        <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              Kelompok Umur · {totalStudents} siswa total
+            </span>
+            <button onClick={addGroup} disabled={disabled || groups.length >= 5} className="text-xs text-accent hover:underline disabled:opacity-40">
+              + Tambah Kelompok
+            </button>
           </div>
-        )}
+          <div className="space-y-3">
+            {groups.map((g, idx) => (
+              <div key={idx} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                <div className="flex flex-wrap items-end gap-3 mb-1">
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Kelompok Umur</label>
+                    <select
+                      value={g.label}
+                      onChange={(e) => applyPreset(idx, e.target.value)}
+                      disabled={disabled}
+                      className={INPUT}
+                    >
+                      {AGE_GROUP_KEYS.map((k) => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                  </div>
+                  <NumField label="Jumlah Siswa" value={g.num_students}
+                    onChange={(v) => setGroup(idx, { num_students: Math.max(1, v) })}
+                    min={1} disabled={disabled} w={100} />
+                  <div className="flex items-end gap-2 ml-auto">
+                    <button
+                      onClick={() => setGroup(idx, { showAkg: !g.showAkg })}
+                      disabled={disabled}
+                      className={BTN_SECONDARY + ' text-xs !py-1.5'}>
+                      {g.showAkg ? 'Sembunyikan AKG ▲' : 'Atur AKG ▼'}
+                    </button>
+                    {groups.length > 1 && (
+                      <button onClick={() => removeGroup(idx)} className="text-xs text-red-400 hover:underline">Hapus</button>
+                    )}
+                  </div>
+                </div>
+                {g.showAkg && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <div className="flex flex-wrap gap-3">
+                      <NumField label="Min Energi"  value={g.constraints.min_energy}  onChange={(v) => setGroupConstraint(idx, 'min_energy', v)}  min={0} unit="kkal" disabled={disabled} />
+                      <NumField label="Min Protein" value={g.constraints.min_protein} onChange={(v) => setGroupConstraint(idx, 'min_protein', v)} min={0} unit="g"    disabled={disabled} />
+                      <NumField label="Maks Lemak"  value={g.constraints.max_fat}     onChange={(v) => setGroupConstraint(idx, 'max_fat', v)}     min={0} unit="g"    disabled={disabled} />
+                      <NumField label="Min Karbo"   value={g.constraints.min_carbs}   onChange={(v) => setGroupConstraint(idx, 'min_carbs', v)}   min={0} unit="g"    disabled={disabled} />
+                      <NumField label="Min Serat"   value={g.constraints.min_fiber}   onChange={(v) => setGroupConstraint(idx, 'min_fiber', v)}   min={0} unit="g"    disabled={disabled} />
+                      <NumField label="Min Besi"    value={g.constraints.min_iron}    onChange={(v) => setGroupConstraint(idx, 'min_iron', v)}    min={0} unit="mg"   disabled={disabled} />
+                      <NumField label="Min Vit C"   value={g.constraints.min_vitc}    onChange={(v) => setGroupConstraint(idx, 'min_vitc', v)}    min={0} unit="mg"   disabled={disabled} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
 
         {disabled
           ? <p className="text-xs text-red-500 dark:text-red-400 mt-3">✕ Tidak bisa dijalankan — scrape harga dulu di atas.</p>
-          : <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">LP memilih dari <strong>{priceCount} bahan</strong> yang sudah ada harga, minimasi biaya sambil memenuhi AKG.</p>
+          : <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">LP memilih dari <strong>{priceCount} bahan</strong> yang sudah ada harga, minimasi biaya per kelompok umur.</p>
         }
       </div>
 
@@ -517,14 +622,13 @@ export default function MenuPlanner() {
         <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6 text-red-700 dark:text-red-300 text-sm">{error}</div>
       )}
 
-      {result && (
+      {result?.mode === 'multi_group' && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
             {[
-              { label: 'Per Siswa / Hari',      value: rp(feasibleDays.length ? result.weekly_per_student / feasibleDays.length : 0) },
-              { label: 'Per Siswa / Minggu',    value: rp(result.weekly_per_student) },
-              { label: `Total ${numDays} Hari`, value: rp(result.weekly_total) },
-              { label: 'Rata-rata Energi',      value: (result.avg_nutrition?.energy || 0) + ' kkal' },
+              { label: 'Total Siswa',           value: result.total_students + ' siswa' },
+              { label: `Grand Total ${numDays} Hari`, value: rp(result.grand_total) },
+              { label: 'Per Siswa / Hari (avg)', value: rp(result.grand_total / result.total_students / numDays) },
             ].map((s) => (
               <div key={s.label} className={`${CARD} p-4 text-center`}>
                 <div className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">{s.label}</div>
@@ -532,49 +636,7 @@ export default function MenuPlanner() {
               </div>
             ))}
           </div>
-
-          <div className={`${CARD} p-3 mb-6`}>
-            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Target AKG Makan Siang (SD 7-12 tahun)</div>
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
-              <span>Energi ≥ {c.min_energy || 600} kkal</span>
-              <span>Protein ≥ {c.min_protein || 15}g</span>
-              <span>Lemak ≤ {c.max_fat || 25}g</span>
-              <span>Karbo ≥ {c.min_carbs || 80}g</span>
-              <span>Serat ≥ {c.min_fiber || 4}g</span>
-              <span>Besi ≥ {c.min_iron || 3}mg</span>
-              <span>Vit C ≥ {c.min_vitc || 15}mg</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
-            {result.week.map((day) => <DayCard key={day.day} day={day} constraints={c} />)}
-          </div>
-
-          {result.avg_nutrition && (
-            <div className={`${CARD} p-4 mb-6`}>
-              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">
-                Rata-rata Gizi per Hari ({feasibleDays.length} hari optimal)
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                  { label: 'Energi',  val: result.avg_nutrition.energy,  unit: 'kkal', target: c.min_energy  || 600 },
-                  { label: 'Protein', val: result.avg_nutrition.protein, unit: 'g',    target: c.min_protein || 15  },
-                  { label: 'Karbo',   val: result.avg_nutrition.carbs,   unit: 'g',    target: c.min_carbs   || 80  },
-                  { label: 'Serat',   val: result.avg_nutrition.fiber,   unit: 'g',    target: c.min_fiber   || 4   },
-                ].map((n) => (
-                  <div key={n.label} className="text-center">
-                    <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                      {Number(n.val).toFixed(1)}<span className="text-sm font-normal text-gray-400 ml-1">{n.unit}</span>
-                    </div>
-                    <div className="text-xs text-gray-400">{n.label}</div>
-                    <div className={`text-xs mt-0.5 font-medium ${n.val >= n.target ? 'text-accent' : 'text-red-500'}`}>
-                      {n.val >= n.target ? '✓ Terpenuhi' : `↑ Kurang ${(n.target - n.val).toFixed(1)}${n.unit}`}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {result.groups.map((g) => <GroupResult key={g.label} group={g} numDays={numDays} />)}
         </>
       )}
 
@@ -582,7 +644,7 @@ export default function MenuPlanner() {
         <div className={`${CARD} p-12 text-center text-gray-400 dark:text-gray-500 mb-6`}>
           <div className="text-4xl mb-3">🍽</div>
           <div className="text-sm">Klik "Optimasi Menu" untuk membuat rencana makan mingguan</div>
-          <div className="text-xs mt-1">LP akan memilih bahan dari TKPI 2020 yang memenuhi AKG dengan biaya minimum</div>
+          <div className="text-xs mt-1">LP akan memilih bahan dari TKPI 2020 yang memenuhi AKG per kelompok umur</div>
         </div>
       )}
 

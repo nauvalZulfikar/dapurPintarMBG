@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.utils.auth import get_current_user
-from backend.services.menu_optimizer import load_tkpi, optimize_week, DEFAULT_CONSTRAINTS, NUTRIENT_KEYS
+from backend.services.menu_optimizer import load_tkpi, optimize_week, DEFAULT_CONSTRAINTS, AKG_PRESETS, NUTRIENT_KEYS
 from backend.services.price_scraper import get_prices
 from backend.core.database import db_get_food_prices, db_get_price_scrape_status
 
@@ -17,13 +17,47 @@ TKPI_PATH = os.path.join(
 )
 
 
+class GroupInput(BaseModel):
+    label: str                          # e.g. "SD (7-9 tahun)"
+    num_students: int = 1
+    constraints: Optional[dict] = None  # if None, uses AKG_PRESETS[label] or DEFAULT_CONSTRAINTS
+
+
 class OptimizeRequest(BaseModel):
     num_days: int = 5
-    num_students: int = 100
-    constraints: Optional[dict] = None
+    num_students: int = 100             # used only when groups is None (legacy)
+    constraints: Optional[dict] = None  # used only when groups is None (legacy)
+    groups: Optional[list[GroupInput]] = None
     excluded_foods: Optional[list[str]] = None
-    price_min: Optional[float] = None   # IDR per 100g, inclusive lower bound
-    price_max: Optional[float] = None   # IDR per 100g, inclusive upper bound
+    price_min: Optional[float] = None
+    price_max: Optional[float] = None
+
+
+def _build_group_result(foods, body: OptimizeRequest, group: GroupInput):
+    c = group.constraints or AKG_PRESETS.get(group.label) or DEFAULT_CONSTRAINTS
+    week = optimize_week(
+        foods,
+        num_days=min(body.num_days, 7),
+        constraints=c,
+        excluded_foods=body.excluded_foods,
+    )
+    feasible = [d for d in week if d.get("feasible")]
+    weekly_cost = sum(d.get("cost_per_serving", 0) for d in week)
+    avg_nutrition = {}
+    if feasible:
+        for key in NUTRIENT_KEYS:
+            avg_nutrition[key] = round(
+                sum(d["nutrition"][key] for d in feasible) / len(feasible), 1
+            )
+    return {
+        "label": group.label,
+        "num_students": group.num_students,
+        "week": week,
+        "weekly_per_student": round(weekly_cost),
+        "weekly_total": round(weekly_cost * group.num_students),
+        "avg_nutrition": avg_nutrition,
+        "constraints_used": {**DEFAULT_CONSTRAINTS, **c},
+    }
 
 
 @router.post("/menu/optimize")
@@ -31,7 +65,6 @@ async def optimize_menu(body: OptimizeRequest, user: dict = Depends(get_current_
     if not os.path.isfile(TKPI_PATH):
         raise HTTPException(500, "TKPI data file not found. Place tkpi.csv in data/")
 
-    # Overlay DB prices (scraped market prices) on top of CSV
     try:
         db_prices = db_get_food_prices()
     except Exception:
@@ -41,24 +74,33 @@ async def optimize_menu(body: OptimizeRequest, user: dict = Depends(get_current_
     if not foods:
         raise HTTPException(500, "No usable food items. Run the price scraper first to populate prices.")
 
-    # Filter by price range if specified
     if body.price_min is not None and body.price_min > 0:
         foods = [f for f in foods if f["price"] >= body.price_min]
     if body.price_max is not None and body.price_max > 0:
         foods = [f for f in foods if f["price"] <= body.price_max]
 
+    # Multi-group mode
+    if body.groups:
+        groups_result = [_build_group_result(foods, body, g) for g in body.groups]
+        total_students = sum(g.num_students for g in body.groups)
+        grand_total = sum(r["weekly_total"] for r in groups_result)
+        return {
+            "mode": "multi_group",
+            "groups": groups_result,
+            "total_students": total_students,
+            "grand_total": round(grand_total),
+            "prices_from_db": len(db_prices),
+        }
+
+    # Legacy single-group mode
     week = optimize_week(
         foods,
         num_days=min(body.num_days, 7),
         constraints=body.constraints,
         excluded_foods=body.excluded_foods,
     )
-
-    # Compute totals
     weekly_cost_per_student = sum(d.get("cost_per_serving", 0) for d in week)
     weekly_total = weekly_cost_per_student * body.num_students
-
-    # Average nutrition across feasible days
     feasible = [d for d in week if d.get("feasible")]
     avg_nutrition = {}
     if feasible:
@@ -66,8 +108,8 @@ async def optimize_menu(body: OptimizeRequest, user: dict = Depends(get_current_
             avg_nutrition[key] = round(
                 sum(d["nutrition"][key] for d in feasible) / len(feasible), 1
             )
-
     return {
+        "mode": "single",
         "week": week,
         "num_students": body.num_students,
         "weekly_per_student": round(weekly_cost_per_student),
@@ -76,6 +118,11 @@ async def optimize_menu(body: OptimizeRequest, user: dict = Depends(get_current_
         "constraints_used": {**DEFAULT_CONSTRAINTS, **(body.constraints or {})},
         "prices_from_db": len(db_prices),
     }
+
+
+@router.get("/menu/akg-presets")
+async def get_akg_presets(_user: dict = Depends(get_current_user)):
+    return AKG_PRESETS
 
 
 @router.get("/menu/foods")

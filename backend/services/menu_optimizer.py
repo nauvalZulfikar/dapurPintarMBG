@@ -171,6 +171,56 @@ DEFAULT_CONSTRAINTS = {
     "min_vitc":    15,    # mg
 }
 
+# ── AKG presets per age group (lunch ~30% of daily AKG) ──────────────────────
+# Source: Permenkes 28/2019 — Angka Kecukupan Gizi
+AKG_PRESETS = {
+    "TK (4-6 tahun)": {
+        "min_energy":  405,   # 30% of 1350 kcal
+        "min_protein": 7,     # 30% of 25g
+        "max_fat":     18,    # 30% of 62g (total fat)
+        "min_carbs":   65,    # 30% of 215g
+        "min_fiber":   6,     # 30% of 20g
+        "min_iron":    3,     # 30% of 10mg
+        "min_vitc":    12,    # 30% of 40mg
+    },
+    "SD (7-9 tahun)": {
+        "min_energy":  500,   # 30% of 1650 kcal
+        "min_protein": 12,    # 30% of 40g
+        "max_fat":     20,    # 30% of 65g
+        "min_carbs":   75,    # 30% of 250g
+        "min_fiber":   7,     # 30% of 23g
+        "min_iron":    3,     # 30% of 10mg
+        "min_vitc":    15,    # 30% of 50mg
+    },
+    "SD (10-12 tahun)": {
+        "min_energy":  600,   # 30% of 2000 kcal
+        "min_protein": 15,    # 30% of 50g
+        "max_fat":     25,    # 30% of 80g
+        "min_carbs":   80,    # 30% of 300g (approx)
+        "min_fiber":   8,     # 30% of 28g
+        "min_iron":    3,     # 30% of 13mg
+        "min_vitc":    15,    # 30% of 50mg
+    },
+    "SMP (13-15 tahun)": {
+        "min_energy":  720,   # 30% of 2400 kcal
+        "min_protein": 21,    # 30% of 70g
+        "max_fat":     25,    # 30% of 80g
+        "min_carbs":   105,   # 30% of 350g
+        "min_fiber":   10,    # 30% of 34g
+        "min_iron":    4,     # 30% of 15mg (avg L/P)
+        "min_vitc":    20,    # 30% of 75mg
+    },
+    "SMA (16-18 tahun)": {
+        "min_energy":  750,   # 30% of 2500 kcal (avg L/P)
+        "min_protein": 20,    # 30% of 65g (avg)
+        "max_fat":     25,    # 30% of 85g
+        "min_carbs":   120,   # 30% of 400g
+        "min_fiber":   11,    # 30% of 37g
+        "min_iron":    5,     # 30% of 17mg (avg)
+        "min_vitc":    25,    # 30% of 90mg
+    },
+}
+
 DAY_LABELS = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
 
 
