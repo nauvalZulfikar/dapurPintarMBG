@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -84,7 +85,9 @@ async def optimize_menu(body: OptimizeRequest, user: dict = Depends(get_current_
 
     # Multi-group mode
     if body.groups:
-        groups_result = [_build_group_result(foods, body, g) for g in body.groups]
+        with ThreadPoolExecutor(max_workers=len(body.groups)) as ex:
+            futures = [ex.submit(_build_group_result, foods, body, g) for g in body.groups]
+            groups_result = [f.result() for f in futures]
         total_students = sum(g.num_students for g in body.groups)
         grand_total = sum(r["weekly_total"] for r in groups_result)
         return {
