@@ -31,10 +31,13 @@ class OptimizeRequest(BaseModel):
     excluded_foods: Optional[list[str]] = None
     price_min: Optional[float] = None
     price_max: Optional[float] = None
+    budget_min: Optional[float] = None  # IDR per serving, minimum cost constraint
 
 
 def _build_group_result(foods, body: OptimizeRequest, group: GroupInput):
-    c = group.constraints or AKG_PRESETS.get(group.label) or DEFAULT_CONSTRAINTS
+    c = dict(group.constraints or AKG_PRESETS.get(group.label) or DEFAULT_CONSTRAINTS)
+    if body.budget_min and body.budget_min > 0:
+        c["min_cost"] = body.budget_min
     week = optimize_week(
         foods,
         num_days=min(body.num_days, 7),
@@ -93,10 +96,13 @@ async def optimize_menu(body: OptimizeRequest, user: dict = Depends(get_current_
         }
 
     # Legacy single-group mode
+    legacy_c = dict(body.constraints or {})
+    if body.budget_min and body.budget_min > 0:
+        legacy_c["min_cost"] = body.budget_min
     week = optimize_week(
         foods,
         num_days=min(body.num_days, 7),
-        constraints=body.constraints,
+        constraints=legacy_c or None,
         excluded_foods=body.excluded_foods,
     )
     weekly_cost_per_student = sum(d.get("cost_per_serving", 0) for d in week)

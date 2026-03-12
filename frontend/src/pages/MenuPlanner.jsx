@@ -453,6 +453,7 @@ function GroupResult({ group, numDays }) {
 export default function MenuPlanner() {
   const [numDays, setNumDays]         = useState(5)
   const [budget, setBudget]           = useState(0)
+  const [budgetMin, setBudgetMin]     = useState(0)
   const [priceMin, setPriceMin]       = useState(0)
   const [priceMax, setPriceMax]       = useState(0)
   const [excludedFoods, setExcludedFoods] = useState(new Set())
@@ -510,6 +511,7 @@ export default function MenuPlanner() {
         return { label: g.label, num_students: g.num_students, constraints: c }
       }),
     }
+    if (budgetMin > 0) payload.budget_min = budgetMin
     if (priceMin > 0) payload.price_min = priceMin
     if (priceMax > 0) payload.price_max = priceMax
     if (excludedFoods.size > 0) payload.excluded_foods = [...excludedFoods]
@@ -536,6 +538,7 @@ export default function MenuPlanner() {
         {/* Global params */}
         <div className="flex flex-wrap items-end gap-4 mb-4">
           <NumField label="Jumlah Hari" value={numDays} onChange={(v) => setNumDays(Math.max(1, Math.min(7, v)))} min={1} max={7} disabled={disabled} w={80} />
+          <NumField label="Budget Min/Porsi" value={budgetMin} onChange={(v) => setBudgetMin(Math.max(0, v))} min={0} unit="Rp, 0=bebas" disabled={disabled} w={130} />
           <NumField label="Budget Maks/Porsi" value={budget} onChange={(v) => setBudget(Math.max(0, v))} min={0} unit="Rp, 0=bebas" disabled={disabled} w={130} />
           <NumField label="Harga Min/100g" value={priceMin} onChange={(v) => setPriceMin(Math.max(0, v))} min={0} unit="Rp, 0=bebas" disabled={disabled} w={130} />
           <NumField label="Harga Maks/100g" value={priceMax} onChange={(v) => setPriceMax(Math.max(0, v))} min={0} unit="Rp, 0=bebas" disabled={disabled} w={130} />
