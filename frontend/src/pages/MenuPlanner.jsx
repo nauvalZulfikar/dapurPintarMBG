@@ -420,31 +420,43 @@ const AGE_GROUP_KEYS = [
 
 // ── Group result block ────────────────────────────────────────────────────────
 function GroupResult({ group, numDays }) {
+  const [open, setOpen] = useState(false)
   const c = group.constraints_used || {}
   const feasible = group.week.filter((d) => d.feasible)
   return (
-    <div className="mb-8">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-        <div>
-          <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">{group.label}</h3>
-          <p className="text-xs text-gray-400">{group.num_students} siswa</p>
+    <div className={`${CARD} mb-4 overflow-hidden`}>
+      {/* Header — always visible */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full px-4 py-3 flex flex-wrap items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors text-left"
+      >
+        <div className="flex-1 min-w-0">
+          <span className="font-bold text-sm text-gray-800 dark:text-gray-100">{group.label}</span>
+          <span className="ml-2 text-xs text-gray-400">{group.num_students} siswa</span>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           {[
-            { label: 'Per Siswa / Hari',    value: rp(feasible.length ? group.weekly_per_student / feasible.length : 0) },
+            { label: 'Per Siswa / Hari',      value: rp(feasible.length ? group.weekly_per_student / feasible.length : 0) },
             { label: `Total ${numDays} Hari`, value: rp(group.weekly_total) },
-            { label: 'Rata Energi',         value: (group.avg_nutrition?.energy || 0) + ' kkal' },
+            { label: 'Rata Energi',           value: (group.avg_nutrition?.energy || 0) + ' kkal' },
           ].map((s) => (
-            <div key={s.label} className={`${CARD} px-3 py-2 text-center min-w-[90px]`}>
+            <div key={s.label} className="text-center">
               <div className="text-[10px] text-gray-400 uppercase tracking-wide">{s.label}</div>
               <div className="text-sm font-bold text-brand dark:text-accent">{s.value}</div>
             </div>
           ))}
         </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-3">
-        {group.week.map((day) => <DayCard key={day.day} day={day} constraints={c} />)}
-      </div>
+        <span className="text-gray-400 text-xs ml-2">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {/* Collapsible content */}
+      {open && (
+        <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {group.week.map((day) => <DayCard key={day.day} day={day} constraints={c} />)}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
