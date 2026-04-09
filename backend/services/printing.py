@@ -68,7 +68,6 @@ PRINT 1,1
 def generate_zpl(item_id, name, weight_g):
     return f"""^XA
 ^PON
-^MNY
 ^LT0
 ^PW400
 ^LL168
