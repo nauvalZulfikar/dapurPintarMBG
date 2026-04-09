@@ -15,7 +15,7 @@ from backend.core.database import (
     remote_tray_items,
     remote_scan_errors,
 )
-from backend.services.printing import db_create_print_job
+from backend.services.printing import create_and_push_job
 from backend.utils.datetime_helpers import now_local_iso
 from backend.api.sse import broadcast
 
@@ -260,7 +260,7 @@ def _scan_allocations(n: int, schools_sorted: list) -> list:
     return allocations
 
 
-def process_delivery_allocation(tray_id: str) -> dict:
+async def process_delivery_allocation(tray_id: str) -> dict:
     with open(SCHOOLS_FILE, "r", encoding="utf-8") as f:
         schools = json.load(f)
     schools_sorted = sorted(schools, key=lambda s: s["distance"])
@@ -298,7 +298,7 @@ CLS
 QRCODE 300,5,L,3,A,0,"{qr_link}"
 PRINT 1,1
 """
-    db_create_print_job(tspl)
+    await create_and_push_job(tspl)
     return {"tray_id": tray_id, "allocations": allocations}
 
 
@@ -340,7 +340,7 @@ async def post_scan(
 
     data = None
     if body.step == "Delivery":
-        data = process_delivery_allocation(code)
+        data = await process_delivery_allocation(code)
 
     await broadcast("scan_ok", {"code": code, "step": body.step})
     return {"ok": True, "code": code, "step": body.step, "reason": "", "data": data}
