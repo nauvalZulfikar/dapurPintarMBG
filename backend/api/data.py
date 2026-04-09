@@ -126,22 +126,47 @@ class CreateItemRequest(BaseModel):
     notes: Optional[str] = None
 
 
+def _save_item_and_print(item_id, name, weight_g, unit, reason, label):
+    """Run in background: save to DB then print."""
+    import threading
+    try:
+        with engine.begin() as c:
+            c.execute(remote_items.insert().values(
+                id=item_id,
+                name=name,
+                weight_grams=weight_g,
+                unit=unit,
+                reason=reason,
+                receiving=True,
+                created_at_receiving=datetime.now(),
+                created_date_receiving=date.today(),
+            ))
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"[ITEM] DB save failed for {item_id}: {e}")
+
+    from backend.services.printing import _send_raw_to_printer, _sync_to_db, LOCAL_PRINT, HAS_WIN32
+    if LOCAL_PRINT and HAS_WIN32:
+        try:
+            _send_raw_to_printer(label)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"[PRINT] Direct print failed: {e}")
+        threading.Thread(target=_sync_to_db, args=(label,), daemon=True).start()
+    else:
+        import asyncio
+        from backend.services.printing import create_and_push_job
+        asyncio.run(create_and_push_job(label))
+
+
 @router.post("/items")
 async def create_item(body: CreateItemRequest, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
-    # Generate unique BHN ID
     item_id = new_item_id()
-    with engine.connect() as c:
-        while c.execute(
-            select(remote_items.c.id).where(remote_items.c.id == item_id)
-        ).first():
-            item_id = new_item_id()
 
-    # Convert weight to grams
     weight_g = int(body.weight)
     if body.unit == "kg":
         weight_g = int(body.weight * 1000)
 
-    # Build reason JSON (QC checklist + notes)
     reason_data = {}
     if body.checklist:
         reason_data["checklist"] = body.checklist
@@ -149,22 +174,10 @@ async def create_item(body: CreateItemRequest, background_tasks: BackgroundTasks
         reason_data["notes"] = body.notes
     reason = json.dumps(reason_data) if reason_data else None
 
-    # Insert item
-    with engine.begin() as c:
-        c.execute(remote_items.insert().values(
-            id=item_id,
-            name=body.name,
-            weight_grams=weight_g,
-            unit=body.unit,
-            reason=reason,
-            receiving=True,
-            created_at_receiving=datetime.now(),
-            created_date_receiving=date.today(),
-        ))
-
-    # Fire print job in background — don't block the response
     label = generate_label(item_id, body.name, weight_g)
-    background_tasks.add_task(create_and_push_job, label)
+
+    # Return immediately — save to DB and print in background
+    background_tasks.add_task(_save_item_and_print, item_id, body.name, weight_g, body.unit, reason, label)
 
     return {
         "id": item_id,
