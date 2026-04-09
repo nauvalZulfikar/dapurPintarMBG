@@ -17,7 +17,7 @@ from backend.core.database import (
     remote_scan_errors,
     remote_print_jobs,
 )
-from backend.services.printing import generate_label, db_create_print_job
+from backend.services.printing import generate_label, db_create_print_job, create_and_push_job
 from backend.services.delivery_optimizer import (
     load_schools_from_json,
     fetch_trays_packed_times,
@@ -162,9 +162,9 @@ async def create_item(body: CreateItemRequest, user: dict = Depends(get_current_
             created_date_receiving=date.today(),
         ))
 
-    # Generate label and create print job
+    # Generate label and push to agent (fallback to polling queue)
     label = generate_label(item_id, body.name, weight_g)
-    job_id = db_create_print_job(label)
+    job_id = await create_and_push_job(label)
 
     return {
         "id": item_id,
