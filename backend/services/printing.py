@@ -73,7 +73,7 @@ def generate_zpl(item_id, name, weight_g):
 ^LL168
 ^CI28
 ^BY2,2,60
-^FO30,5^BCN,60,Y,N,N^FD{item_id}^FS
+^FO30,20^BCN,60,Y,N,N^FD{item_id}^FS
 ^XZ"""
 
 def generate_label(item_id, name, weight_g):
