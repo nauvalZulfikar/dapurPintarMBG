@@ -1,0 +1,14 @@
+Dim WshShell
+Set WshShell = CreateObject("WScript.Shell")
+
+WshShell.CurrentDirectory = "C:\Users\Administator\Desktop\dapurPintarMBG"
+
+Dim cmd
+cmd = """C:\Users\Administator\AppData\Local\Programs\Python\Python314\python.exe"" " & _
+      "printer\printer_poller.py >> " & _
+      """C:\Users\Administator\Desktop\poller.log"" 2>&1"
+
+Do
+    WshShell.Run "cmd.exe /c " & cmd, 0, True
+    WScript.Sleep 5000
+Loop

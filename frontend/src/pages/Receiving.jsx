@@ -26,36 +26,36 @@ export default function Receiving() {
     } catch {}
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     if (!name.trim() || !weight || Number(weight) <= 0) {
       setResult({ ok: false, message: 'Name and weight are required' })
       playSound(false)
       return
     }
-    setLoading(true)
-    setResult(null)
-    try {
-      const res = await createItem({
-        name: name.trim(),
-        weight: Number(weight),
-        unit,
-        checklist,
-        notes: notes.trim() || undefined,
-      })
-      setResult({ ok: true, message: `Created: ${res.data.id}`, data: res.data })
-      playSound(true)
-      setName('')
-      setWeight('')
-      setChecklist({})
-      setNotes('')
-      nameRef.current?.focus()
-    } catch (err) {
+
+    const payload = {
+      name: name.trim(),
+      weight: Number(weight),
+      unit,
+      checklist,
+      notes: notes.trim() || undefined,
+    }
+
+    // Show success immediately — don't wait for server
+    setResult({ ok: true, message: 'Submitted' })
+    playSound(true)
+    setName('')
+    setWeight('')
+    setChecklist({})
+    setNotes('')
+    nameRef.current?.focus()
+
+    // Fire request in background
+    createItem(payload).catch((err) => {
       setResult({ ok: false, message: err.response?.data?.detail || 'Failed to create item' })
       playSound(false)
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   return (
@@ -142,10 +142,9 @@ export default function Receiving() {
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full py-2 bg-brand text-white rounded text-sm font-medium hover:bg-brand-dark disabled:opacity-50"
+          className="w-full py-2 bg-brand text-white rounded text-sm font-medium hover:bg-brand-dark"
         >
-          {loading ? 'Saving...' : 'Submit'}
+          Submit
         </button>
       </form>
     </div>

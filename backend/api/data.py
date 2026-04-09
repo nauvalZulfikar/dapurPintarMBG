@@ -126,37 +126,35 @@ class CreateItemRequest(BaseModel):
     notes: Optional[str] = None
 
 
-def _save_item_and_print(item_id, name, weight_g, unit, reason, label):
-    """Run in background: save to DB then print."""
-    import threading
-    try:
-        with engine.begin() as c:
-            c.execute(remote_items.insert().values(
-                id=item_id,
-                name=name,
-                weight_grams=weight_g,
-                unit=unit,
-                reason=reason,
-                receiving=True,
-                created_at_receiving=datetime.now(),
-                created_date_receiving=date.today(),
-            ))
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"[ITEM] DB save failed for {item_id}: {e}")
+def _print_then_save(item_id, name, weight_g, unit, reason, label):
+    """Run in background: print first, then save to DB."""
+    import threading, logging
+    log = logging.getLogger(__name__)
 
-    from backend.services.printing import _send_raw_to_printer, _sync_to_db, LOCAL_PRINT, HAS_WIN32
+    from backend.services.printing import _send_raw_to_printer, LOCAL_PRINT, HAS_WIN32
     if LOCAL_PRINT and HAS_WIN32:
         try:
             _send_raw_to_printer(label)
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"[PRINT] Direct print failed: {e}")
-        threading.Thread(target=_sync_to_db, args=(label,), daemon=True).start()
-    else:
-        import asyncio
-        from backend.services.printing import create_and_push_job
-        asyncio.run(create_and_push_job(label))
+            log.error(f"[PRINT] Direct print failed: {e}")
+
+    def _save():
+        try:
+            with engine.begin() as c:
+                c.execute(remote_items.insert().values(
+                    id=item_id,
+                    name=name,
+                    weight_grams=weight_g,
+                    unit=unit,
+                    reason=reason,
+                    receiving=True,
+                    created_at_receiving=datetime.now(),
+                    created_date_receiving=date.today(),
+                ))
+        except Exception as e:
+            log.error(f"[ITEM] DB save failed for {item_id}: {e}")
+
+    threading.Thread(target=_save, daemon=True).start()
 
 
 @router.post("/items")
@@ -177,7 +175,7 @@ async def create_item(body: CreateItemRequest, background_tasks: BackgroundTasks
     label = generate_label(item_id, body.name, weight_g)
 
     # Return immediately — save to DB and print in background
-    background_tasks.add_task(_save_item_and_print, item_id, body.name, weight_g, body.unit, reason, label)
+    background_tasks.add_task(_print_then_save, item_id, body.name, weight_g, body.unit, reason, label)
 
     return {
         "id": item_id,
