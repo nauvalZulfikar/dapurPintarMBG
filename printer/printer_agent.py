@@ -16,6 +16,9 @@ import json
 import requests
 from dotenv import load_dotenv
 
+_ws_printed_jobs: set = set()
+_ws_printed_lock = threading.Lock()
+
 load_dotenv()
 
 logging.basicConfig(
@@ -80,6 +83,8 @@ def on_ws_message(ws, message):
         tspl = job.get("tspl", "")
         logger.info(f"[WS] Received job id={job_id}")
         send_raw_to_printer(tspl)
+        with _ws_printed_lock:
+            _ws_printed_jobs.add(job_id)
         ws.send(json.dumps({"id": job_id, "ok": True}))
         logger.info(f"[WS] Ack sent for job {job_id}")
     except Exception as e:
@@ -134,6 +139,20 @@ def poll_once():
         return
     job = jobs[0]
     job_id, tspl = job["id"], job["tspl"]
+    with _ws_printed_lock:
+        already_printed = job_id in _ws_printed_jobs
+        if already_printed:
+            _ws_printed_jobs.discard(job_id)
+    if already_printed:
+        logger.info(f"[POLL] Skipping job {job_id} — already sent via WS")
+        # Still mark as printed in DB so it doesn't stay in queue
+        requests.post(
+            f"{API_BASE_URL}/print-complete",
+            json={"id": job_id},
+            headers=headers,
+            timeout=HTTP_TIMEOUT,
+        ).raise_for_status()
+        return
     logger.info(f"[POLL] Received job id={job_id}")
     send_raw_to_printer(tspl)
     requests.post(
