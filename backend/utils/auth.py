@@ -61,13 +61,10 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
+        return {
+            "id": payload.get("id"),
+            "username": username,
+            "role": payload.get("role"),
+        }
     except JWTError:
         raise credentials_exception
-
-    with engine.connect() as c:
-        row = c.execute(
-            select(remote_users).where(remote_users.c.username == username)
-        ).first()
-    if row is None:
-        raise credentials_exception
-    return {"id": row.id, "username": row.username, "role": row.role}

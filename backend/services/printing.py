@@ -2,6 +2,7 @@
 
 import os
 import logging
+import threading
 from typing import Optional
 from sqlalchemy import select, func
 from dotenv import load_dotenv
@@ -10,6 +11,15 @@ from backend.core.database import engine, remote_print_jobs
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+
+LOCAL_PRINT = os.getenv("LOCAL_PRINT", "").lower() in ("1", "true", "yes")
+PRINTER_NAME = os.getenv("PRINTER_NAME", "")
+
+try:
+    import win32print
+    HAS_WIN32 = True
+except ImportError:
+    HAS_WIN32 = False
 
 
 # ---------- DB helpers ----------
@@ -45,12 +55,52 @@ def db_mark_print_job_printed(job_id: int):
         )
 
 
+def _send_raw_to_printer(data: str):
+    """Send raw ZPL/TSPL directly to the local printer via win32print."""
+    if not HAS_WIN32:
+        raise RuntimeError("win32print not available")
+    if not data.endswith("\n"):
+        data += "\n"
+    hPrinter = None
+    try:
+        hPrinter = win32print.OpenPrinter(PRINTER_NAME)
+        job = win32print.StartDocPrinter(hPrinter, 1, ("RAW JOB", None, "RAW"))
+        win32print.StartPagePrinter(hPrinter)
+        win32print.WritePrinter(hPrinter, data.encode("utf-8"))
+        win32print.EndPagePrinter(hPrinter)
+        win32print.EndDocPrinter(hPrinter)
+        logger.info(f"[PRINT] Sent directly to '{PRINTER_NAME}'")
+    finally:
+        if hPrinter:
+            win32print.ClosePrinter(hPrinter)
+
+
+def _sync_to_db(tspl: str):
+    """Write print job to Supabase in background (fire-and-forget)."""
+    try:
+        job_id = db_create_print_job(tspl)
+        db_mark_print_job_printed(job_id)
+        logger.info(f"[PRINT] Synced job {job_id} to DB")
+    except Exception as e:
+        logger.error(f"[PRINT] DB sync failed: {e}")
+
+
 async def create_and_push_job(tspl: str) -> int:
     """
-    Save job to DB, then instantly push to WS agent if connected.
-    Falls back to polling automatically (poller picks up printed=0 jobs).
-    Returns job_id.
+    LOCAL_PRINT=true  → print immediately via win32print, sync DB in background thread.
+    LOCAL_PRINT=false → save job to DB, push via WS to agent (polling fallback).
+    Returns job_id (or -1 if local mode).
     """
+    if LOCAL_PRINT and HAS_WIN32:
+        # Print instantly, sync to DB without blocking
+        try:
+            _send_raw_to_printer(tspl)
+        except Exception as e:
+            logger.error(f"[PRINT] Direct print failed: {e}")
+        threading.Thread(target=_sync_to_db, args=(tspl,), daemon=True).start()
+        return -1
+
+    # Cloud mode: save to DB then push via WS
     from backend.api.print_queue import push_job_to_agent
 
     job_id = db_create_print_job(tspl)
