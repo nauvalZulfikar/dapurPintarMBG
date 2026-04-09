@@ -4,7 +4,7 @@ import os
 from datetime import date, datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select, func, text
@@ -127,7 +127,7 @@ class CreateItemRequest(BaseModel):
 
 
 @router.post("/items")
-async def create_item(body: CreateItemRequest, user: dict = Depends(get_current_user)):
+async def create_item(body: CreateItemRequest, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     # Generate unique BHN ID
     item_id = new_item_id()
     with engine.connect() as c:
@@ -162,16 +162,15 @@ async def create_item(body: CreateItemRequest, user: dict = Depends(get_current_
             created_date_receiving=date.today(),
         ))
 
-    # Generate label and push to agent (fallback to polling queue)
+    # Fire print job in background — don't block the response
     label = generate_label(item_id, body.name, weight_g)
-    job_id = await create_and_push_job(label)
+    background_tasks.add_task(create_and_push_job, label)
 
     return {
         "id": item_id,
         "name": body.name,
         "weight_grams": weight_g,
         "unit": body.unit,
-        "print_job_id": job_id,
     }
 
 
