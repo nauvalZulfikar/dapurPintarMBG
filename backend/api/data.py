@@ -126,6 +126,12 @@ class CreateItemRequest(BaseModel):
     notes: Optional[str] = None
 
 
+class UpdateItemRequest(BaseModel):
+    name: Optional[str] = None
+    weight: Optional[float] = None
+    unit: Optional[str] = None
+
+
 def _print_then_save(item_id, name, weight_g, unit, reason, label):
     """Run in background: print first, then save to DB."""
     import threading, logging
@@ -183,6 +189,44 @@ async def create_item(body: CreateItemRequest, background_tasks: BackgroundTasks
         "weight_grams": weight_g,
         "unit": body.unit,
     }
+
+
+@router.put("/items/{item_id}")
+async def update_item(item_id: str, body: UpdateItemRequest, user: dict = Depends(get_current_user)):
+    values = {}
+    if body.name is not None:
+        values["name"] = body.name
+    if body.weight is not None:
+        weight_g = int(body.weight)
+        if body.unit == "kg":
+            weight_g = int(body.weight * 1000)
+        values["weight_grams"] = weight_g
+    if body.unit is not None:
+        values["unit"] = body.unit
+
+    if not values:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    with engine.begin() as c:
+        result = c.execute(
+            remote_items.update().where(remote_items.c.id == item_id).values(**values)
+        )
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Item not found")
+
+    return {"ok": True}
+
+
+@router.delete("/items/{item_id}")
+async def delete_item(item_id: str, user: dict = Depends(get_current_user)):
+    with engine.begin() as c:
+        result = c.execute(
+            remote_items.delete().where(remote_items.c.id == item_id)
+        )
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Item not found")
+
+    return {"ok": True}
 
 
 # ── Trays ────────────────────────────────────────────────────────────────────
