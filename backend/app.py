@@ -1,12 +1,32 @@
 # backend/app.py
 import os
 import logging
+import logging.handlers
 from contextlib import asynccontextmanager
+
+# ── Logging config ──────────────────────────────────────────────────────────
+# Configurable via env: LOG_LEVEL (default INFO), LOG_FILE (default logs/dpmbg.log)
+_LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
+os.makedirs(_LOG_DIR, exist_ok=True)
+_log_file = os.getenv("LOG_FILE", os.path.join(_LOG_DIR, "dpmbg.log"))
+_log_level = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
+
+_root = logging.getLogger()
+if not any(isinstance(h, logging.handlers.RotatingFileHandler) for h in _root.handlers):
+    _fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    _file_h = logging.handlers.RotatingFileHandler(_log_file, maxBytes=10_000_000, backupCount=5, encoding="utf-8")
+    _file_h.setFormatter(_fmt)
+    _file_h.setLevel(_log_level)
+    _root.addHandler(_file_h)
+    _root.setLevel(_log_level)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from backend.core.database import REMOTE_DB_URL, init_remote_db
 
 from backend.api.health import router as health_router
@@ -16,6 +36,22 @@ from backend.api.scans import router as scans_router
 from backend.api.data import router as data_router
 from backend.api.sse import router as sse_router
 from backend.api.menu import router as menu_router
+from backend.api.admin import router as admin_router
+from backend.api.nutrition import router as nutrition_router
+from backend.api.saved_menus import router as saved_menus_router
+from backend.api.defects import router as defects_router
+from backend.api.schools_admin import router as schools_admin_router
+from backend.api.suppliers import router as suppliers_router
+from backend.api.student_requests import router as student_requests_router
+from backend.api.purchase_orders import router as purchase_orders_router
+from backend.api.inspections import router as inspections_router
+from backend.api.disputes import router as disputes_router
+from backend.api.production import router as production_router
+from backend.api.distributions import router as distributions_router
+from backend.api.finance import router as finance_router
+from backend.api.aslap import router as aslap_router
+from backend.api.notifications import router as notifications_router
+from backend.api.executive import router as executive_router
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +88,45 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="DPMBG Backend", version="0.3.0", lifespan=lifespan)
 
+# Rate limiting (default 200/min per IP; tighter limits applied per-route via decorator)
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Security headers — sent on every response
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as _StarletteRequest
+
+class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        # HSTS only when actually HTTPS (otherwise harmless on http://localhost)
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+app.add_middleware(_SecurityHeadersMiddleware)
+
+# Global exception handler — catch unhandled errors, log, return safe message
+from fastapi.requests import Request as _FastAPIRequest
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as _StarletteHTTPException
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: _FastAPIRequest, exc: Exception):
+    # Pass HTTPException through (FastAPI handles it); only catch true unhandled
+    if isinstance(exc, _StarletteHTTPException):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Terjadi kesalahan internal. Tim kami sudah dinotifikasi."},
+    )
+
 # CORS — same-origin in production; configurable for dev / separate frontend
 _cors_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
 app.add_middleware(
@@ -70,11 +145,28 @@ app.include_router(scans_router, prefix="/api")
 app.include_router(data_router, prefix="/api")
 app.include_router(sse_router, prefix="/api")
 app.include_router(menu_router, prefix="/api")
+app.include_router(admin_router, prefix="/api/admin")
+app.include_router(nutrition_router, prefix="/api")
+app.include_router(saved_menus_router, prefix="/api")
+app.include_router(defects_router, prefix="/api")
+app.include_router(schools_admin_router, prefix="/api")    # Phase 1 — admin CRUD for schools
+app.include_router(suppliers_router, prefix="/api")         # Phase 1 — supplier master CRUD
+app.include_router(student_requests_router, prefix="/api")  # Phase 2A — student menu requests
+app.include_router(purchase_orders_router, prefix="/api")    # Phase 3 — Akuntan PO
+app.include_router(inspections_router, prefix="/api")        # Phase 3 — Joint Inspection 3-sign-off
+app.include_router(disputes_router, prefix="/api")           # Phase 3 — supplier disputes
+app.include_router(production_router, prefix="/api")         # Phase 4 — production batches + samples
+app.include_router(distributions_router, prefix="/api")      # Phase 5 — distribution layer (confirm receipt, leftovers, vehicles, drivers)
+app.include_router(finance_router, prefix="/api")            # Phase 6 — Akuntan finance (price trends, expenses, LRA biweekly)
+app.include_router(aslap_router, prefix="/api")              # Phase 7 — ASLAP daily ops (checklist, water, observations, comms, weekly reports)
+app.include_router(notifications_router, prefix="/api")      # Phase 8 — notifications + push subs + preferences
+app.include_router(executive_router, prefix="/api")          # Phase 9 — executive dashboard 3-level + BGN compliance bundle
 
 # Manual price scrape trigger (admin only, runs in background thread)
 import threading
 from fastapi import Depends
-from backend.utils.auth import get_current_user
+from backend.utils.auth import get_current_user, get_current_kitchen
+from backend.utils.permissions import require_permission
 
 _scrape_thread: threading.Thread | None = None
 
@@ -89,7 +181,7 @@ def _run_scrape_tracked(max_items: int):
 @app.post("/api/menu/prices/scrape")
 async def trigger_price_scrape(
     max_items: int = 0,
-    _user: dict = Depends(get_current_user),
+    kitchen: dict = Depends(require_permission("menu.scrape")),
 ):
     global _scrape_thread
     if _scrape_thread and _scrape_thread.is_alive():
@@ -103,6 +195,7 @@ async def trigger_price_scrape(
 
 @app.get("/api/menu/prices/is-running")
 async def scrape_is_running(_user: dict = Depends(get_current_user)):
+    # readable by anyone logged-in so progress bar works for viewers too
     return {"running": bool(_scrape_thread and _scrape_thread.is_alive())}
 
 

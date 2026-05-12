@@ -4,6 +4,7 @@ import os
 import logging
 import threading
 from typing import Optional
+
 from sqlalchemy import select, func
 from dotenv import load_dotenv
 
@@ -12,8 +13,10 @@ from backend.core.database import engine, remote_print_jobs
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+# Local direct-print mode (Windows host with the printer attached).
+# When the backend runs on the same box as the printer we skip the WS detour.
 LOCAL_PRINT = os.getenv("LOCAL_PRINT", "").lower() in ("1", "true", "yes")
-PRINTER_NAME = os.getenv("PRINTER_NAME", "")
+PRINTER_NAME_FALLBACK = os.getenv("PRINTER_NAME", "")
 
 try:
     import win32print
@@ -24,29 +27,24 @@ except ImportError:
 
 # ---------- DB helpers ----------
 
-def db_create_print_job(tspl: str) -> int:
-    """Insert a new print job and return its ID."""
+def db_create_print_job(tspl: str, kitchen_id: Optional[int] = None) -> int:
     with engine.begin() as c:
         res = c.execute(
-            remote_print_jobs.insert().values(tspl=tspl, printed=0)
+            remote_print_jobs.insert().values(tspl=tspl, printed=0, kitchen_id=kitchen_id)
         )
         return res.inserted_primary_key[0]
 
 
-def db_get_next_print_job() -> Optional[dict]:
-    """Fetch the oldest unprinted job (printed=0)."""
+def db_get_next_print_job(kitchen_id: Optional[int] = None) -> Optional[dict]:
     with engine.connect() as c:
-        row = c.execute(
-            select(remote_print_jobs)
-            .where(remote_print_jobs.c.printed == 0)
-            .order_by(remote_print_jobs.c.id.asc())
-            .limit(1)
-        ).first()
+        q = select(remote_print_jobs).where(remote_print_jobs.c.printed == 0)
+        if kitchen_id is not None:
+            q = q.where(remote_print_jobs.c.kitchen_id == kitchen_id)
+        row = c.execute(q.order_by(remote_print_jobs.c.id.asc()).limit(1)).first()
         return dict(row._mapping) if row else None
 
 
 def db_mark_print_job_printed(job_id: int):
-    """Mark a job as printed."""
     with engine.begin() as c:
         c.execute(
             remote_print_jobs.update()
@@ -55,60 +53,61 @@ def db_mark_print_job_printed(job_id: int):
         )
 
 
-def _send_raw_to_printer(data: str):
-    """Send raw ZPL/TSPL directly to the local printer via win32print."""
+def _send_raw_to_printer(data: str, printer_name: Optional[str] = None):
+    """Send raw ZPL/TSPL to a Windows printer. `printer_name` falls back to
+    the legacy single-printer env var when not given."""
     if not HAS_WIN32:
         raise RuntimeError("win32print not available")
+    target = printer_name or PRINTER_NAME_FALLBACK
+    if not target:
+        raise RuntimeError("No printer_name configured for this kitchen")
     if not data.endswith("\n"):
         data += "\n"
     hPrinter = None
     try:
-        hPrinter = win32print.OpenPrinter(PRINTER_NAME)
-        job = win32print.StartDocPrinter(hPrinter, 1, ("RAW JOB", None, "RAW"))
+        hPrinter = win32print.OpenPrinter(target)
+        win32print.StartDocPrinter(hPrinter, 1, ("RAW JOB", None, "RAW"))
         win32print.StartPagePrinter(hPrinter)
         win32print.WritePrinter(hPrinter, data.encode("utf-8"))
         win32print.EndPagePrinter(hPrinter)
         win32print.EndDocPrinter(hPrinter)
-        logger.info(f"[PRINT] Sent directly to '{PRINTER_NAME}'")
+        logger.info(f"[PRINT] Sent directly to '{target}'")
     finally:
         if hPrinter:
             win32print.ClosePrinter(hPrinter)
 
 
-def _sync_to_db(tspl: str):
-    """Write print job to Supabase in background (fire-and-forget)."""
+def _sync_to_db(tspl: str, kitchen_id: Optional[int]):
     try:
-        job_id = db_create_print_job(tspl)
+        job_id = db_create_print_job(tspl, kitchen_id=kitchen_id)
         db_mark_print_job_printed(job_id)
-        logger.info(f"[PRINT] Synced job {job_id} to DB")
+        logger.info(f"[PRINT] Synced job {job_id} to DB (kitchen={kitchen_id})")
     except Exception as e:
         logger.error(f"[PRINT] DB sync failed: {e}")
 
 
-async def create_and_push_job(tspl: str) -> int:
+async def create_and_push_job(tspl: str, kitchen_id: Optional[int] = None,
+                              printer_name: Optional[str] = None) -> int:
     """
-    LOCAL_PRINT=true  → print immediately via win32print, sync DB in background thread.
-    LOCAL_PRINT=false → save job to DB, push via WS to agent (polling fallback).
-    Returns job_id (or -1 if local mode).
+    LOCAL_PRINT=true  → print via win32print to `printer_name` (per-kitchen), sync DB async.
+    LOCAL_PRINT=false → insert job with kitchen_id, push via WS to the agent bound to that kitchen.
     """
     if LOCAL_PRINT and HAS_WIN32:
-        # Print instantly, sync to DB without blocking
         try:
-            _send_raw_to_printer(tspl)
+            _send_raw_to_printer(tspl, printer_name=printer_name)
         except Exception as e:
             logger.error(f"[PRINT] Direct print failed: {e}")
-        threading.Thread(target=_sync_to_db, args=(tspl,), daemon=True).start()
+        threading.Thread(target=_sync_to_db, args=(tspl, kitchen_id), daemon=True).start()
         return -1
 
-    # Cloud mode: save to DB then push via WS
     from backend.api.print_queue import push_job_to_agent
 
-    job_id = db_create_print_job(tspl)
-    pushed = await push_job_to_agent(job_id, tspl)
+    job_id = db_create_print_job(tspl, kitchen_id=kitchen_id)
+    pushed = await push_job_to_agent(job_id, tspl, kitchen_id=kitchen_id)
     if pushed:
-        logger.info(f"[PRINT] Job {job_id} pushed via WebSocket")
+        logger.info(f"[PRINT] Job {job_id} pushed via WebSocket to kitchen={kitchen_id}")
     else:
-        logger.info(f"[PRINT] Job {job_id} queued for polling (agent offline)")
+        logger.info(f"[PRINT] Job {job_id} queued for polling (kitchen={kitchen_id}, agent offline)")
     return job_id
 
 
@@ -136,8 +135,15 @@ def generate_zpl(item_id, name, weight_g):
     )
 
 
-def generate_label(item_id, name, weight_g):
-    printer_lang = os.getenv("PRINTER_LANG", "TSPL").upper()
-    if printer_lang == "ZPL":
+def generate_label(item_id, name, weight_g, kitchen: Optional[dict] = None):
+    """Pick the label dialect based on the kitchen's printer_lang column,
+    falling back to PRINTER_LANG env for the legacy single-kitchen setup."""
+    lang = None
+    if kitchen:
+        lang = (kitchen.get("printer_lang") or "").upper() or None
+    if not lang:
+        lang = os.getenv("PRINTER_LANG", "TSPL").upper()
+
+    if lang == "ZPL":
         return generate_zpl(item_id, name, weight_g)
     return generate_tspl(item_id, name, weight_g)

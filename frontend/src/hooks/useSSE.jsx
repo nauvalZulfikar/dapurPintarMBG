@@ -7,28 +7,25 @@ export function useSSE(onScanOk, onScanError) {
     const token = localStorage.getItem('token')
     if (!token) return
 
-    const es = new EventSource(`/api/stream?token=${token}`)
+    const kid = localStorage.getItem('active_kitchen_id')
+    const url = kid
+      ? `/api/stream?token=${token}&kitchen_id=${kid}`
+      : `/api/stream?token=${token}`
+
+    const es = new EventSource(url)
     esRef.current = es
 
     es.addEventListener('scan_ok', (e) => {
-      try {
-        onScanOk?.(JSON.parse(e.data))
-      } catch {}
+      try { onScanOk?.(JSON.parse(e.data)) } catch {}
     })
-
     es.addEventListener('scan_error', (e) => {
-      try {
-        onScanError?.(JSON.parse(e.data))
-      } catch {}
+      try { onScanError?.(JSON.parse(e.data)) } catch {}
     })
-
-    es.onerror = () => {
-      // EventSource auto-reconnects
-    }
+    es.onerror = () => {}
 
     return () => {
       es.close()
       esRef.current = null
     }
-  }, []) // Connect once on mount
+  }, [])
 }

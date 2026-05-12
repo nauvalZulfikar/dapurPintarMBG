@@ -43,9 +43,14 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/api': 'http://localhost:8000',
-      '/print-queue': 'http://localhost:8000',
-      '/print-complete': 'http://localhost:8000',
+      '/api': 'http://localhost:8001',
+      '/print-queue': 'http://localhost:8001',
+      '/print-complete': 'http://localhost:8001',
     },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.js'],
   },
 })

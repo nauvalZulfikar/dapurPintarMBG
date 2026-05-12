@@ -20,3 +20,6 @@ def is_tray_id(s: str) -> bool:
 
 def new_item_id() -> str:
     return "BHN-" + uuid.uuid4().hex[:8].upper()
+
+def new_defect_id() -> str:
+    return "DEF-" + uuid.uuid4().hex[:8].upper()

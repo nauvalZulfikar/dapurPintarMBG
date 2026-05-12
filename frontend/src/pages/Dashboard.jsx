@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '../hooks/useAuth'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
@@ -17,8 +18,8 @@ import { formatDateTime, todayISO } from '../utils/format'
 
 const INPUT = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent'
 
-function itemColumns(onEdit, onDelete) {
-  return [
+function itemColumns(onEdit, onDelete, canEdit) {
+  const base = [
     { key: 'id', label: 'ID' },
     { key: 'name', label: 'Name' },
     { key: 'weight_grams', label: 'Weight (g)' },
@@ -26,6 +27,10 @@ function itemColumns(onEdit, onDelete) {
     { key: 'created_at_receiving', label: 'Received At', render: (v) => formatDateTime(v) },
     { key: 'processing', label: 'Processed', render: (v) => v ? 'Yes' : 'No' },
     { key: 'created_at_processing', label: 'Processed At', render: (v) => formatDateTime(v) },
+  ]
+  if (!canEdit) return base
+  return [
+    ...base,
     {
       key: '_actions', label: '',
       render: (_, row) => (
@@ -390,6 +395,11 @@ function DailyTrend({ stats }) {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export default function Dashboard() {
+  const { hasPermission } = useAuth()
+  const canEditItems = hasPermission('items.edit')
+  const canExport = hasPermission('export.daily')
+  const canExportRange = hasPermission('export.range')
+
   const [date, setDate] = useState(todayISO())
   const [metrics, setMetrics] = useState(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
@@ -493,14 +503,17 @@ export default function Dashboard() {
             type="date" value={date} onChange={onDateChange}
             className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
           />
-          <a
-            href={`/api/export/daily?date=${date}`}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 bg-brand text-white text-sm rounded hover:opacity-90 whitespace-nowrap"
-          >
-            Export Excel
-          </a>
+          {canExport && (
+            <a
+              href={`/api/export/daily?date=${date}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 bg-brand text-white text-sm rounded hover:opacity-90 whitespace-nowrap"
+            >
+              Export Daily
+            </a>
+          )}
+          {canExportRange && <RangeExportButton date={date} />}
         </div>
       </div>
 
@@ -544,7 +557,7 @@ export default function Dashboard() {
               <input type="text" placeholder="Search by name..." value={search}
                 onChange={(e) => { setSearch(e.target.value); setItemsPage(1) }}
                 className="mb-3 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm w-64 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500" />
-              <DataTable columns={itemColumns(openEdit, setDeleteId)} data={items} loading={itemsLoading} />
+              <DataTable columns={itemColumns(openEdit, setDeleteId, canEditItems)} data={items} loading={itemsLoading} />
               <Pagination page={itemsPage} totalPages={itemsTotalPages} onPageChange={setItemsPage} />
             </>
           )}
@@ -616,6 +629,48 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+function RangeExportButton({ date }) {
+  const [open, setOpen] = useState(false)
+  const to = date
+  const from = (() => {
+    const d = new Date(date)
+    d.setDate(d.getDate() - 6)
+    return d.toISOString().slice(0, 10)
+  })()
+  const [f, setF] = useState(from)
+  const [t, setT] = useState(to)
+  const url = `/api/export/range?from=${f}&to=${t}`
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(o => !o)}
+        className="px-3 py-1.5 bg-gray-700 text-white text-sm rounded hover:opacity-90 whitespace-nowrap">
+        Export Range
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow p-3 w-64 space-y-2">
+          <div className="text-xs text-gray-500 dark:text-gray-400">Range tanggal</div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="w-10 text-gray-700 dark:text-gray-200">From</span>
+            <input type="date" value={f} onChange={e => setF(e.target.value)}
+              className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100" />
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="w-10 text-gray-700 dark:text-gray-200">To</span>
+            <input type="date" value={t} onChange={e => setT(e.target.value)}
+              className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100" />
+          </div>
+          <a href={url} target="_blank" rel="noreferrer"
+            onClick={() => setOpen(false)}
+            className="block text-center px-3 py-1.5 bg-brand text-white text-sm rounded hover:opacity-90">
+            Download
+          </a>
         </div>
       )}
     </div>

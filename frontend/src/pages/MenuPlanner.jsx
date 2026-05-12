@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { optimizeMenu, getPriceStatus, triggerScrape, listFoods, getScrapeIsRunning, getAkgPresets } from '../api/menu'
+import { optimizeMenu, getPriceStatus, triggerScrape, listFoods, getScrapeIsRunning, getAkgPresets, overridePrice, getPriceHistory, setNutritionOverride, getSubstitutes, saveMenu, listSavedMenus, getSavedMenu, deleteSavedMenu } from '../api/menu'
+import { useAuth } from '../hooks/useAuth'
+import { useLocation } from 'react-router-dom'
 
 // ── Shared styles ────────────────────────────────────────────────────────────
 const CARD = 'bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700'
@@ -50,8 +52,72 @@ function NutrBar({ label, value, target, unit, isMax }) {
   )
 }
 
+// ── Substitutes popover ───────────────────────────────────────────────────────
+function SubstitutesPopover({ item, onSelect, onClose }) {
+  const [subs, setSubs]       = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    getSubstitutes(item.name)
+      .then((r) => { if (!cancelled) setSubs(r.data.substitutes || []) })
+      .catch((e) => { if (!cancelled) setError(e.response?.data?.detail || e.message) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [item.name])
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto p-4"
+        data-testid="substitutes-modal"
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Substitusi Bahan</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{item.name}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-2 text-lg leading-none">×</button>
+        </div>
+        {loading && <div className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">Memuat alternatif…</div>}
+        {error && <div className="text-sm text-red-500 dark:text-red-400 py-4 text-center">{error}</div>}
+        {!loading && !error && (subs?.length === 0
+          ? <div className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">Tidak ditemukan alternatif serupa.</div>
+          : <div className="space-y-2">
+              {subs.map((s, i) => (
+                <button
+                  key={i}
+                  data-testid={`substitute-option-${i}`}
+                  onClick={() => { onSelect(s); onClose() }}
+                  className="w-full text-left border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm text-gray-800 dark:text-gray-100 leading-snug">{s.name}</div>
+                      <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 capitalize">{s.category}</div>
+                    </div>
+                    <span className="text-xs font-semibold text-brand dark:text-accent shrink-0">sim {s.similarity.toFixed(2)}</span>
+                  </div>
+                  <div className="mt-1.5 flex gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <span>⚡ {s.nutrition.energy.toFixed(0)} kkal</span>
+                    <span>🥩 {s.nutrition.protein.toFixed(1)}g protein</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Day card ─────────────────────────────────────────────────────────────────
-function DayCard({ day, constraints }) {
+function DayCard({ day, constraints, onSubstitute }) {
+  const { hasPermission } = useAuth()
+  const canSub = hasPermission('menu.view')
+  const [subItem, setSubItem] = useState(null)
   const c = constraints || {}
   if (!day.feasible) {
     return (
@@ -59,13 +125,15 @@ function DayCard({ day, constraints }) {
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <span className="font-bold text-sm text-gray-800 dark:text-gray-100">{day.label}</span>
         </div>
-        <div className="flex-1 flex items-center justify-center p-6 text-gray-400 text-sm">Tidak ada solusi optimal</div>
+        <div className="flex-1 flex items-center justify-center p-6 text-gray-400 dark:text-gray-500 text-sm">Tidak ada solusi optimal</div>
       </div>
     )
   }
   const grouped = {}
   CAT_ORDER.forEach((cat) => {
-    const items = day.items.filter((it) => it.category === cat)
+    const items = day.items
+      .map((it, idx) => ({ ...it, _idx: idx }))
+      .filter((it) => it.category === cat)
     if (items.length) grouped[cat] = items
   })
   return (
@@ -81,7 +149,19 @@ function DayCard({ day, constraints }) {
             {grouped[cat].map((item, i) => (
               <div key={i} className="flex items-baseline justify-between gap-1 text-sm py-0.5">
                 <span className="text-gray-700 dark:text-gray-300 leading-tight">{item.name}</span>
-                <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">{Math.round(item.grams)}g</span>
+                <span className="flex items-center gap-1 shrink-0">
+                  <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{Math.round(item.grams)}g</span>
+                  {canSub && (
+                    <button
+                      data-testid={`sub-btn-${day.day}-${i}`}
+                      onClick={() => setSubItem({ ...item, _idx: item._idx })}
+                      className="text-[10px] text-brand hover:text-brand/80 dark:text-accent dark:hover:text-accent/80 font-medium leading-none px-1 py-0.5 rounded border border-brand/30 dark:border-accent/30 hover:bg-brand/5 dark:hover:bg-accent/10 transition-colors"
+                      title="Cari substitusi"
+                    >
+                      Sub
+                    </button>
+                  )}
+                </span>
               </div>
             ))}
           </div>
@@ -94,6 +174,13 @@ function DayCard({ day, constraints }) {
         <NutrBar label="Karbo"   value={day.nutrition.carbs}   target={c.min_carbs   || 80}  unit="g" />
         <NutrBar label="Serat"   value={day.nutrition.fiber}   target={c.min_fiber   || 4}   unit="g" />
       </div>
+      {subItem && (
+        <SubstitutesPopover
+          item={subItem}
+          onSelect={(sub) => onSubstitute && onSubstitute(day.day, subItem, sub, subItem._idx)}
+          onClose={() => setSubItem(null)}
+        />
+      )}
     </div>
   )
 }
@@ -193,7 +280,7 @@ function PriceStatusBanner({ onCountChange }) {
           ) : (
             <div className="text-sm text-gray-700 dark:text-gray-300">
               <span className="font-semibold">{count} bahan</span> sudah ada harga pasar
-              {lastAt && <span className="ml-2 text-xs text-gray-400">· diperbarui {new Date(lastAt).toLocaleDateString('id-ID')}</span>}
+              {lastAt && <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">· diperbarui {new Date(lastAt).toLocaleDateString('id-ID')}</span>}
               {count < TOTAL_TKPI && <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">· {TOTAL_TKPI - count} bahan belum ada harga (tidak masuk optimizer)</span>}
             </div>
           )}
@@ -256,6 +343,7 @@ function FoodTable({ priceCount, excludedFoods, onExcludedChange }) {
 
   useEffect(() => {
     if (priceCount > 0 && foods === null) load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priceCount])
 
   const allItems = foods ? Object.values(foods.categories).flat() : []
@@ -279,7 +367,7 @@ function FoodTable({ priceCount, excludedFoods, onExcludedChange }) {
         <div>
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Daftar Bahan Makanan TKPI 2020</h3>
           {foods && (
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
               {foods.total} bahan · <span className="text-accent">{foods.with_price} punya harga</span> · {foods.without_price} belum
             </p>
           )}
@@ -290,7 +378,7 @@ function FoodTable({ priceCount, excludedFoods, onExcludedChange }) {
         </div>
       </div>
 
-      {loading && <div className="p-8 text-center text-sm text-gray-400">Memuat data bahan makanan...</div>}
+      {loading && <div className="p-8 text-center text-sm text-gray-400 dark:text-gray-500">Memuat data bahan makanan...</div>}
 
       {foods && (
         <>
@@ -313,26 +401,26 @@ function FoodTable({ priceCount, excludedFoods, onExcludedChange }) {
                 Reset {excludedFoods.size} exclude
               </button>
             )}
-            <span className="ml-auto text-xs text-gray-400">{filtered.length} bahan</span>
+            <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">{filtered.length} bahan</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-                  <th className="px-3 py-2.5 w-8 text-center" title="Ikutkan dalam optimizer"><span className="text-[10px] text-gray-400 font-semibold">Opt</span></th>
-                  <th className="text-left px-3 py-2.5 text-gray-500 font-semibold w-20">Kode</th>
-                  <th className="text-left px-3 py-2.5 text-gray-500 font-semibold">Nama Bahan</th>
-                  <th className="text-left px-3 py-2.5 text-gray-500 font-semibold w-28">Kategori</th>
-                  <th className="text-right px-3 py-2.5 text-gray-500 font-semibold">Energi (kkal)</th>
-                  <th className="text-right px-3 py-2.5 text-gray-500 font-semibold">Protein (g)</th>
-                  <th className="text-right px-3 py-2.5 text-gray-500 font-semibold">Harga/100g</th>
-                  <th className="text-center px-3 py-2.5 text-gray-500 font-semibold w-16">Siap</th>
+                  <th className="px-3 py-2.5 w-8 text-center" title="Ikutkan dalam optimizer"><span className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold">Opt</span></th>
+                  <th className="text-left px-3 py-2.5 text-gray-500 dark:text-gray-400 font-semibold w-20">Kode</th>
+                  <th className="text-left px-3 py-2.5 text-gray-500 dark:text-gray-400 font-semibold">Nama Bahan</th>
+                  <th className="text-left px-3 py-2.5 text-gray-500 dark:text-gray-400 font-semibold w-28">Kategori</th>
+                  <th className="text-right px-3 py-2.5 text-gray-500 dark:text-gray-400 font-semibold">Energi (kkal)</th>
+                  <th className="text-right px-3 py-2.5 text-gray-500 dark:text-gray-400 font-semibold">Protein (g)</th>
+                  <th className="text-right px-3 py-2.5 text-gray-500 dark:text-gray-400 font-semibold">Harga/100g</th>
+                  <th className="text-center px-3 py-2.5 text-gray-500 dark:text-gray-400 font-semibold w-16">Siap</th>
                 </tr>
               </thead>
               <tbody>
                 {pageItems.length === 0 && (
-                  <tr><td colSpan={8} className="text-center py-8 text-gray-400">Tidak ada data</td></tr>
+                  <tr><td colSpan={8} className="text-center py-8 text-gray-400 dark:text-gray-500">Tidak ada data</td></tr>
                 )}
                 {pageItems.map((f) => {
                   const excluded = excludedFoods.has(f.code)
@@ -343,17 +431,26 @@ function FoodTable({ priceCount, excludedFoods, onExcludedChange }) {
                         className="rounded cursor-pointer"
                         title={excluded ? 'Ikutkan dalam optimizer' : 'Exclude dari optimizer'} />
                     </td>
-                    <td className="px-3 py-2 font-mono text-gray-400 text-[11px]">{f.code}</td>
-                    <td className="px-3 py-2 text-gray-800 dark:text-gray-200 max-w-xs leading-snug">{f.name}</td>
+                    <td className="px-3 py-2 font-mono text-gray-400 dark:text-gray-500 text-[11px]">{f.code}</td>
+                    <td className="px-3 py-2 text-gray-800 dark:text-gray-200 max-w-xs leading-snug">
+                      {f.name}
+                      {f.has_nutrition_override && (
+                        <span title="Nutrition overridden" className="ml-1 text-[9px] text-amber-600 dark:text-amber-400">●</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2">
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${CAT_COLORS[f.category] || CAT_COLORS.other}`}>
                         {CAT_LABELS[f.category] || f.category}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-gray-600 dark:text-gray-400">{f.energy.toFixed(0)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-gray-600 dark:text-gray-400">{f.protein.toFixed(1)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-gray-600 dark:text-gray-400">
+                      <NutritionCell food={f} field="energy" onSaved={load} />
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-gray-600 dark:text-gray-400">
+                      <NutritionCell food={f} field="protein" onSaved={load} />
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {f.has_price ? <span className="text-accent font-semibold">{rp(f.price)}</span> : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                      <PriceCell food={f} onSaved={load} />
                     </td>
                     <td className="px-3 py-2 text-center">
                       {f.has_price ? <span className="text-green-500 font-bold">✓</span> : <span className="text-gray-300 dark:text-gray-600">—</span>}
@@ -367,7 +464,7 @@ function FoodTable({ priceCount, excludedFoods, onExcludedChange }) {
 
           {totalPages > 1 && (
             <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-              <span className="text-xs text-gray-400">Hal {page} / {totalPages} · {filtered.length} bahan</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">Hal {page} / {totalPages} · {filtered.length} bahan</span>
               <div className="flex gap-1">
                 <button onClick={() => setPage(1)} disabled={page === 1} className={BTN_SECONDARY + ' !px-2 !py-1'}>«</button>
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className={BTN_SECONDARY + ' !px-2 !py-1'}>‹</button>
@@ -400,7 +497,7 @@ function NumField({ label, value, onChange, min, max, unit, disabled, w = 90 }) 
   return (
     <div>
       <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-        {label}{unit && <span className="text-gray-400 ml-1">({unit})</span>}
+        {label}{unit && <span className="text-gray-400 dark:text-gray-500 ml-1">({unit})</span>}
       </label>
       <input type="number" min={min} max={max} value={value} disabled={disabled}
         onChange={(e) => onChange(+e.target.value || min)}
@@ -419,7 +516,7 @@ const AGE_GROUP_KEYS = [
 ]
 
 // ── Group result block ────────────────────────────────────────────────────────
-function GroupResult({ group, numDays }) {
+function GroupResult({ group, numDays, onSubstitute }) {
   const [open, setOpen] = useState(false)
   const c = group.constraints_used || {}
   const feasible = group.week.filter((d) => d.feasible)
@@ -432,7 +529,7 @@ function GroupResult({ group, numDays }) {
       >
         <div className="flex-1 min-w-0">
           <span className="font-bold text-sm text-gray-800 dark:text-gray-100">{group.label}</span>
-          <span className="ml-2 text-xs text-gray-400">{group.num_students} siswa</span>
+          <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">{group.num_students} siswa</span>
         </div>
         <div className="flex gap-3 flex-wrap">
           {[
@@ -441,19 +538,26 @@ function GroupResult({ group, numDays }) {
             { label: 'Rata Energi',           value: (group.avg_nutrition?.energy || 0) + ' kkal' },
           ].map((s) => (
             <div key={s.label} className="text-center">
-              <div className="text-[10px] text-gray-400 uppercase tracking-wide">{s.label}</div>
+              <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">{s.label}</div>
               <div className="text-sm font-bold text-brand dark:text-accent">{s.value}</div>
             </div>
           ))}
         </div>
-        <span className="text-gray-400 text-xs ml-2">{open ? '▲' : '▼'}</span>
+        <span className="text-gray-400 dark:text-gray-500 text-xs ml-2">{open ? '▲' : '▼'}</span>
       </button>
 
       {/* Collapsible content */}
       {open && (
         <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {group.week.map((day) => <DayCard key={day.day} day={day} constraints={c} />)}
+            {group.week.map((day) => (
+              <DayCard
+                key={day.day}
+                day={day}
+                constraints={c}
+                onSubstitute={onSubstitute ? (dayNum, oldItem, sub, idx) => onSubstitute(group.label, dayNum, oldItem, sub, idx) : undefined}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -461,20 +565,76 @@ function GroupResult({ group, numDays }) {
   )
 }
 
+// ── Save menu modal ───────────────────────────────────────────────────────────
+function SaveMenuModal({ onSave, onClose, saving }) {
+  const [name, setName] = useState('')
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-sm p-5"
+        data-testid="save-menu-modal"
+      >
+        <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Simpan Menu</h3>
+        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Nama menu</label>
+        <input
+          autoFocus
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) onSave(name.trim()) }}
+          placeholder="Contoh: Menu Minggu 1 April"
+          data-testid="save-menu-name-input"
+          className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent mb-4"
+        />
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded text-sm">
+            Batal
+          </button>
+          <button
+            onClick={() => name.trim() && onSave(name.trim())}
+            disabled={!name.trim() || saving}
+            data-testid="save-menu-confirm"
+            className="px-5 py-2 bg-brand hover:opacity-90 text-white rounded font-semibold text-sm disabled:opacity-40"
+          >
+            {saving ? 'Menyimpan…' : 'Simpan'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function MenuPlanner() {
+  const location = useLocation()
+  const { hasPermission } = useAuth()
+  const canSaveMenu = hasPermission('menu.save')
+
   const [numDays, setNumDays]         = useState(5)
   const [budget, setBudget]           = useState(0)
   const [budgetMin, setBudgetMin]     = useState(0)
   const [priceMin, setPriceMin]       = useState(0)
   const [priceMax, setPriceMax]       = useState(0)
   const [excludedFoods, setExcludedFoods] = useState(new Set())
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [result, setResult]           = useState(null)
+  const [lastPayload, setLastPayload] = useState(null)
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState(null)
   const [priceCount, setPriceCount]   = useState(0)
   const [akgPresets, setAkgPresets]   = useState({})
+  const [showSaveModal, setShowSaveModal] = useState(false)
+  const [saving, setSaving]           = useState(false)
+  const [saveMsg, setSaveMsg]         = useState(null)
+
+  // Saved-menus library (was previously a separate page)
+  const [showLibrary, setShowLibrary] = useState(false)
+  const [libraryMenus, setLibraryMenus] = useState([])
+  const [libraryLoading, setLibraryLoading] = useState(false)
+  const [libraryError, setLibraryError] = useState('')
+  const [libraryLoadingId, setLibraryLoadingId] = useState(null)
+  const [libraryDeletingId, setLibraryDeletingId] = useState(null)
+  const [libraryConfirmId, setLibraryConfirmId] = useState(null)
 
   // Multi-group state: array of { label, num_students, constraints, showAkg }
   const [groups, setGroups] = useState([
@@ -491,6 +651,73 @@ export default function MenuPlanner() {
       })))
     }).catch(() => {})
   }, [])
+
+  // Load saved menu payload into the planner state (used by router-state restore
+  // and by the inline library modal).
+  const applyLoadedPayload = (loaded) => {
+    const req = loaded?.payload?.request
+    if (!req) return
+    if (req.num_days) setNumDays(req.num_days)
+    if (req.budget_min) setBudgetMin(req.budget_min)
+    const maxCost = req.groups?.find?.((g) => g?.constraints?.max_cost)?.constraints?.max_cost
+    if (maxCost) setBudget(maxCost)
+    if (req.price_min) setPriceMin(req.price_min)
+    if (req.price_max) setPriceMax(req.price_max)
+    if (req.excluded_foods) setExcludedFoods(new Set(req.excluded_foods))
+    if (req.groups) {
+      setGroups(req.groups.map((g) => ({
+        label: g.label,
+        num_students: g.num_students,
+        constraints: g.constraints || { ...DEFAULT_CONSTRAINTS },
+        showAkg: false,
+      })))
+    }
+  }
+
+  useEffect(() => {
+    if (location.state?.loadPayload) applyLoadedPayload(location.state.loadPayload)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
+
+  const openLibrary = async () => {
+    setShowLibrary(true)
+    setLibraryError('')
+    setLibraryLoading(true)
+    try {
+      const r = await listSavedMenus()
+      setLibraryMenus(r.data.menus || [])
+    } catch (e) {
+      setLibraryError(e.response?.data?.detail || e.message)
+    } finally {
+      setLibraryLoading(false)
+    }
+  }
+
+  const handleLibraryLoad = async (id) => {
+    setLibraryLoadingId(id)
+    try {
+      const r = await getSavedMenu(id)
+      applyLoadedPayload(r.data)
+      setShowLibrary(false)
+    } catch (e) {
+      setLibraryError(e.response?.data?.detail || e.message)
+    } finally {
+      setLibraryLoadingId(null)
+    }
+  }
+
+  const handleLibraryDelete = async (id) => {
+    setLibraryDeletingId(id)
+    try {
+      await deleteSavedMenu(id)
+      setLibraryMenus((prev) => prev.filter((m) => m.id !== id))
+    } catch (e) {
+      setLibraryError(e.response?.data?.detail || e.message)
+    } finally {
+      setLibraryDeletingId(null)
+      setLibraryConfirmId(null)
+    }
+  }
 
   const setGroup = (idx, patch) =>
     setGroups((prev) => prev.map((g, i) => i === idx ? { ...g, ...patch } : g))
@@ -515,6 +742,7 @@ export default function MenuPlanner() {
   const handleOptimize = () => {
     setLoading(true)
     setError(null)
+    setSaveMsg(null)
     const payload = {
       num_days: numDays,
       groups: groups.map((g) => {
@@ -527,6 +755,7 @@ export default function MenuPlanner() {
     if (priceMin > 0) payload.price_min = priceMin
     if (priceMax > 0) payload.price_max = priceMax
     if (excludedFoods.size > 0) payload.excluded_foods = [...excludedFoods]
+    setLastPayload(payload)
     optimizeMenu(payload)
       .then((res) => setResult(res.data))
       .catch((err) => {
@@ -536,12 +765,63 @@ export default function MenuPlanner() {
       .finally(() => setLoading(false))
   }
 
+  const handleSaveMenu = async (name) => {
+    setSaving(true)
+    try {
+      await saveMenu({ name, payload: { request: lastPayload, result } })
+      setShowSaveModal(false)
+      setSaveMsg(`Menu "${name}" berhasil disimpan.`)
+    } catch (e) {
+      setSaveMsg(e.response?.data?.detail || 'Gagal menyimpan menu.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSubstitute = (groupLabel, dayNum, oldItem, sub, idx) => {
+    if (!result?.groups) return
+    setResult((prev) => ({
+      ...prev,
+      groups: prev.groups.map((g) => {
+        if (g.label !== groupLabel) return g
+        return {
+          ...g,
+          week: g.week.map((day) => {
+            if (day.day !== dayNum) return day
+            const newItems = day.items.slice()
+            if (typeof idx === 'number' && idx >= 0 && idx < newItems.length) {
+              const it = newItems[idx]
+              newItems[idx] = {
+                ...it,
+                code: sub.code,
+                name: sub.name,
+                category: sub.category,
+                nutrition: sub.nutrition,
+              }
+            }
+            return { ...day, items: newItems }
+          }),
+        }
+      }),
+    }))
+  }
+
   const disabled = priceCount === 0
   const totalStudents = groups.reduce((s, g) => s + g.num_students, 0)
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">Menu Planner</h2>
+      <div className="flex items-start justify-between mb-1">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Menu Planner</h2>
+        {canSaveMenu && (
+          <button
+            onClick={openLibrary}
+            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            📁 Buka Tersimpan
+          </button>
+        )}
+      </div>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Optimasi menu makan siang MBG — minimasi biaya, penuhi AKG per kelompok umur.</p>
 
       <PriceStatusBanner onCountChange={setPriceCount} />
@@ -639,19 +919,39 @@ export default function MenuPlanner() {
 
       {result?.mode === 'multi_group' && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
             {[
               { label: 'Total Siswa',           value: result.total_students + ' siswa' },
               { label: `Grand Total ${numDays} Hari`, value: rp(result.grand_total) },
               { label: 'Per Siswa / Hari (avg)', value: rp(result.grand_total / result.total_students / numDays) },
             ].map((s) => (
               <div key={s.label} className={`${CARD} p-4 text-center`}>
-                <div className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">{s.label}</div>
+                <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{s.label}</div>
                 <div className="text-base font-bold text-brand dark:text-accent">{s.value}</div>
               </div>
             ))}
           </div>
-          {result.groups.map((g) => <GroupResult key={g.label} group={g} numDays={numDays} />)}
+
+          {canSaveMenu && (
+            <div className="flex items-center gap-3 mb-6">
+              <button
+                data-testid="save-menu-btn"
+                onClick={() => setShowSaveModal(true)}
+                className={BTN_SECONDARY}
+              >
+                💾 Simpan Menu
+              </button>
+              {saveMsg && (
+                <span className={`text-xs ${saveMsg.includes('berhasil') ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                  {saveMsg}
+                </span>
+              )}
+            </div>
+          )}
+
+          {result.groups.map((g) => (
+            <GroupResult key={g.label} group={g} numDays={numDays} onSubstitute={handleSubstitute} />
+          ))}
         </>
       )}
 
@@ -664,6 +964,330 @@ export default function MenuPlanner() {
       )}
 
       <FoodTable priceCount={priceCount} excludedFoods={excludedFoods} onExcludedChange={setExcludedFoods} />
+
+      {showSaveModal && (
+        <SaveMenuModal
+          onSave={handleSaveMenu}
+          onClose={() => setShowSaveModal(false)}
+          saving={saving}
+        />
+      )}
+
+      {showLibrary && (
+        <SavedMenusLibraryModal
+          menus={libraryMenus}
+          loading={libraryLoading}
+          error={libraryError}
+          loadingId={libraryLoadingId}
+          deletingId={libraryDeletingId}
+          confirmId={libraryConfirmId}
+          onSelectConfirm={setLibraryConfirmId}
+          onClose={() => setShowLibrary(false)}
+          onLoad={handleLibraryLoad}
+          onDelete={handleLibraryDelete}
+          onRefresh={openLibrary}
+        />
+      )}
     </div>
+  )
+}
+
+function SavedMenusLibraryModal({
+  menus, loading, error, loadingId, deletingId, confirmId,
+  onSelectConfirm, onClose, onLoad, onDelete, onRefresh,
+}) {
+  const fmt = (iso) => {
+    if (!iso) return '—'
+    try {
+      return new Date(iso).toLocaleString('id-ID', {
+        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      })
+    } catch { return iso.slice(0, 16).replace('T', ' ') }
+  }
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 w-full max-w-3xl mx-4 max-h-[80vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Menu Tersimpan</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Klik "Muat" untuk membuka di optimizer ini.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={onRefresh} disabled={loading} className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50">
+              {loading ? 'Memuat…' : '↻'}
+            </button>
+            <button onClick={onClose} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-200">✕</button>
+          </div>
+        </div>
+        {error && (
+          <div className="px-5 py-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm">{error}</div>
+        )}
+        <div className="overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-gray-700/50 text-left text-xs uppercase text-gray-500 dark:text-gray-400 sticky top-0">
+              <tr>
+                <th className="px-4 py-2.5">Nama Menu</th>
+                <th className="px-4 py-2.5">Dibuat Oleh</th>
+                <th className="px-4 py-2.5">Tanggal</th>
+                <th className="px-4 py-2.5 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {loading ? (
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">Memuat…</td></tr>
+              ) : menus.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-10 text-center text-gray-400 dark:text-gray-500">
+                    <div className="text-2xl mb-2">📭</div>
+                    <div>Belum ada menu tersimpan.</div>
+                    <div className="text-xs mt-1">Optimasi menu, lalu klik "Simpan Menu".</div>
+                  </td>
+                </tr>
+              ) : menus.map((m) => (
+                <tr key={m.id} data-testid={`saved-menu-row-${m.id}`} className="text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                  <td className="px-4 py-3 font-medium">{m.name}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{m.created_by_username}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 tabular-nums text-xs">{fmt(m.created_at)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2 justify-center">
+                      <button
+                        data-testid={`load-menu-${m.id}`}
+                        onClick={() => onLoad(m.id)}
+                        disabled={loadingId === m.id}
+                        className="px-4 py-1.5 bg-brand hover:opacity-90 text-white rounded text-sm font-medium disabled:opacity-40 transition-opacity"
+                      >
+                        {loadingId === m.id ? 'Memuat…' : 'Muat'}
+                      </button>
+                      {confirmId === m.id ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">Yakin hapus?</span>
+                          <button
+                            data-testid={`confirm-delete-${m.id}`}
+                            onClick={() => onDelete(m.id)}
+                            disabled={deletingId === m.id}
+                            className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40"
+                          >
+                            {deletingId === m.id ? 'Menghapus…' : 'Ya, Hapus'}
+                          </button>
+                          <button onClick={() => onSelectConfirm(null)} className="text-xs text-gray-500 hover:underline">Batal</button>
+                        </div>
+                      ) : (
+                        <button
+                          data-testid={`delete-menu-${m.id}`}
+                          onClick={() => onSelectConfirm(m.id)}
+                          className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          Hapus
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+// ── Manual price override cell (accountant/admin only) ───────────────────────
+function PriceCell({ food, onSaved }) {
+  const { hasPermission } = useAuth()
+  const canEdit = hasPermission('prices.override')
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  if (!canEdit) {
+    return food.has_price
+      ? <span className="text-accent font-semibold">{rp(food.price)}</span>
+      : <span className="text-gray-300 dark:text-gray-600">—</span>
+  }
+
+  const display = food.has_price
+    ? <span className="text-accent font-semibold">{rp(food.price)}</span>
+    : <span className="text-gray-400 dark:text-gray-500">—</span>
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      const num = val === '' ? null : Math.round(Number(val))
+      if (num !== null && (Number.isNaN(num) || num < 0)) {
+        alert('Harga harus angka >= 0')
+        return
+      }
+      await overridePrice(food.code, {
+        price: num,
+        manual_source: 'manual override',
+        food_name: food.name,
+      })
+      setEditing(false)
+      onSaved && onSaved()
+    } catch (e) {
+      alert(e.response?.data?.detail || e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!editing) {
+    return (
+      <span className="inline-flex items-center gap-1.5 justify-end">
+        {display}
+        {hasPermission('prices.history') && (
+          <PriceHistoryButton foodCode={food.code} foodName={food.name} />
+        )}
+        <button onClick={() => { setVal(food.has_price ? String(food.price) : ''); setEditing(true) }}
+          className="text-[10px] text-brand hover:underline opacity-60 hover:opacity-100" title="Override harga (accountant/admin)">
+          edit
+        </button>
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 justify-end">
+      <input
+        type="number" min="0" step="100" autoFocus
+        value={val} onChange={e => setVal(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }}
+        className="w-20 px-1 py-0.5 text-right text-xs bg-white dark:bg-gray-700 border border-brand rounded text-gray-900 dark:text-white"
+        placeholder="kosong=clear"
+      />
+      <button onClick={save} disabled={busy} className="text-[10px] text-green-600 hover:underline disabled:opacity-50">save</button>
+      <button onClick={() => setEditing(false)} className="text-[10px] text-gray-500 hover:underline">x</button>
+    </span>
+  )
+}
+
+
+// ── Nutrition edit cell (ahli_gizi / admin) ──────────────────────────────────
+function NutritionCell({ food, field, onSaved }) {
+  const { hasPermission } = useAuth()
+  const canEdit = hasPermission('foods.edit')
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState('')
+  const current = field === 'protein' ? food.protein.toFixed(1) : food.energy.toFixed(0)
+  if (!canEdit) return <span>{current}</span>
+
+  const save = async () => {
+    const num = Number(val)
+    if (val === '' || Number.isNaN(num) || num < 0) {
+      alert('Angka >= 0')
+      return
+    }
+    try {
+      await setNutritionOverride(food.code, { [field]: num })
+      setEditing(false)
+      onSaved && onSaved()
+    } catch (e) {
+      alert(e.response?.data?.detail || e.message)
+    }
+  }
+
+  if (!editing) return (
+    <span className="inline-flex items-center gap-1 justify-end">
+      <span>{current}</span>
+      <button onClick={() => { setVal(String(current)); setEditing(true) }}
+        className="text-[9px] text-brand opacity-50 hover:opacity-100 hover:underline"
+        title={`Override ${field} (ahli_gizi/admin)`}>
+        ✎
+      </button>
+    </span>
+  )
+  return (
+    <span className="inline-flex items-center gap-1 justify-end">
+      <input
+        type="number" step="0.1" autoFocus
+        value={val} onChange={e => setVal(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }}
+        className="w-14 px-1 py-0.5 text-right text-xs bg-white dark:bg-gray-700 border border-brand rounded text-gray-900 dark:text-white"
+      />
+      <button onClick={save} className="text-[10px] text-green-600 hover:underline">ok</button>
+      <button onClick={() => setEditing(false)} className="text-[10px] text-gray-500 hover:underline">x</button>
+    </span>
+  )
+}
+
+
+// ── Price history popover (accountant / admin) ───────────────────────────────
+function PriceHistoryButton({ foodCode, foodName }) {
+  const [open, setOpen] = useState(false)
+  const [rows, setRows] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  const openDrawer = async () => {
+    setOpen(true); setLoading(true)
+    try {
+      const r = await getPriceHistory(foodCode)
+      setRows(r.data.history || [])
+    } catch {
+      setRows([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <button onClick={openDrawer}
+        className="text-[10px] text-gray-400 hover:text-brand opacity-60 hover:opacity-100"
+        title="Lihat riwayat harga">
+        hist
+      </button>
+      {open && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setOpen(false)}>
+          <div onClick={e => e.stopPropagation()}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto p-4">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Riwayat Harga</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{foodCode} — {foodName}</p>
+              </div>
+              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">×</button>
+            </div>
+            {loading && <div className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">Memuat…</div>}
+            {!loading && (rows?.length === 0
+              ? <div className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">Belum ada perubahan harga yang tercatat.</div>
+              : <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                      <th className="py-1.5 text-left">Waktu</th>
+                      <th className="py-1.5 text-left">Source</th>
+                      <th className="py-1.5 text-right">Harga</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows?.map((r, i) => (
+                      <tr key={i} className="border-b border-gray-100 dark:border-gray-700/50">
+                        <td className="py-1.5 text-gray-700 dark:text-gray-300">
+                          {r.changed_at ? r.changed_at.slice(0, 19).replace('T', ' ') : '—'}
+                        </td>
+                        <td className="py-1.5">
+                          <span className={`px-1.5 py-0.5 text-[10px] rounded ${
+                            r.source === 'manual' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                            : r.source === 'manual_clear' ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          }`}>
+                            {r.source || '—'}
+                          </span>
+                        </td>
+                        <td className="py-1.5 text-right tabular-nums font-semibold text-gray-800 dark:text-gray-100">
+                          {r.price !== null && r.price !== undefined ? `Rp${r.price.toLocaleString('id-ID')}` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

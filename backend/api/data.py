@@ -16,6 +16,7 @@ from backend.core.database import (
     remote_tray_items,
     remote_scan_errors,
     remote_print_jobs,
+    db_list_schools,
 )
 from backend.services.printing import generate_label, db_create_print_job, create_and_push_job
 from backend.services.delivery_optimizer import (
@@ -23,7 +24,8 @@ from backend.services.delivery_optimizer import (
     fetch_trays_packed_times,
     assign_trays_to_schools,
 )
-from backend.utils.auth import get_current_user
+from backend.utils.auth import get_current_user, get_current_kitchen
+from backend.utils.permissions import require_permission
 from backend.utils.validators import new_item_id
 from backend.utils.datetime_helpers import now_local_iso
 
@@ -42,25 +44,38 @@ SCHOOLS_FILE = os.path.join(
 @router.get("/overview")
 async def overview(
     date_filter: Optional[str] = Query(None, alias="date"),
-    user: dict = Depends(get_current_user),
+    kitchen: dict = Depends(get_current_kitchen),
 ):
     today = date.fromisoformat(date_filter) if date_filter else date.today()
+    kid = kitchen["id"]
     with engine.connect() as c:
         received = c.execute(
             select(func.count()).select_from(remote_items)
-            .where(remote_items.c.created_date_receiving == today)
+            .where(
+                (remote_items.c.created_date_receiving == today) &
+                (remote_items.c.kitchen_id == kid)
+            )
         ).scalar() or 0
         processed = c.execute(
             select(func.count()).select_from(remote_items)
-            .where(remote_items.c.created_date_processing == today)
+            .where(
+                (remote_items.c.created_date_processing == today) &
+                (remote_items.c.kitchen_id == kid)
+            )
         ).scalar() or 0
         packed = c.execute(
             select(func.count()).select_from(remote_trays)
-            .where(remote_trays.c.created_date_packing == today)
+            .where(
+                (remote_trays.c.created_date_packing == today) &
+                (remote_trays.c.kitchen_id == kid)
+            )
         ).scalar() or 0
         delivered = c.execute(
             select(func.count()).select_from(remote_trays)
-            .where(remote_trays.c.created_date_delivery == today)
+            .where(
+                (remote_trays.c.created_date_delivery == today) &
+                (remote_trays.c.kitchen_id == kid)
+            )
         ).scalar() or 0
     return {
         "items_received": received,
@@ -68,6 +83,7 @@ async def overview(
         "trays_packed": packed,
         "trays_delivered": delivered,
         "date": str(today),
+        "kitchen": {"id": kitchen["id"], "slug": kitchen["slug"], "name": kitchen["name"]},
     }
 
 
@@ -78,11 +94,13 @@ async def get_items(
     date_filter: Optional[str] = Query(None, alias="date"),
     page: int = Query(1, ge=1),
     search: Optional[str] = Query(None),
-    user: dict = Depends(get_current_user),
+    include_availability: bool = Query(False),
+    kitchen: dict = Depends(get_current_kitchen),
 ):
     offset = (page - 1) * PAGE_SIZE
-    q = select(remote_items).order_by(remote_items.c.created_at_receiving.desc())
-    count_q = select(func.count()).select_from(remote_items)
+    kid = kitchen["id"]
+    q = select(remote_items).where(remote_items.c.kitchen_id == kid).order_by(remote_items.c.created_at_receiving.desc())
+    count_q = select(func.count()).select_from(remote_items).where(remote_items.c.kitchen_id == kid)
 
     if date_filter:
         q = q.where(remote_items.c.created_date_receiving == date_filter)
@@ -95,9 +113,21 @@ async def get_items(
         total = c.execute(count_q).scalar() or 0
         rows = c.execute(q.limit(PAGE_SIZE).offset(offset)).fetchall()
 
+    defect_map: dict = {}
+    if include_availability and rows:
+        ids = [r.id for r in rows]
+        with engine.connect() as c:
+            sums = c.execute(text("""
+                SELECT item_id, COALESCE(SUM(weight_grams), 0) AS total
+                FROM defect_items
+                WHERE item_id = ANY(:ids)
+                GROUP BY item_id
+            """), {"ids": ids}).fetchall()
+            defect_map = {r.item_id: int(r.total or 0) for r in sums}
+
     items = []
     for r in rows:
-        items.append({
+        row = {
             "id": r.id,
             "name": r.name,
             "weight_grams": r.weight_grams,
@@ -105,9 +135,15 @@ async def get_items(
             "reason": r.reason,
             "receiving": r.receiving,
             "created_at_receiving": str(r.created_at_receiving) if r.created_at_receiving else None,
+            "created_date_receiving": str(r.created_date_receiving) if r.created_date_receiving else None,
             "processing": r.processing,
             "created_at_processing": str(r.created_at_processing) if r.created_at_processing else None,
-        })
+        }
+        if include_availability:
+            already = defect_map.get(r.id, 0)
+            row["already_defected_grams"] = already
+            row["available_grams"] = max(0, int(r.weight_grams or 0) - already)
+        items.append(row)
 
     return {
         "items": items,
@@ -132,15 +168,15 @@ class UpdateItemRequest(BaseModel):
     unit: Optional[str] = None
 
 
-def _print_then_save(item_id, name, weight_g, unit, reason, label):
-    """Run in background: print first, then save to DB."""
+def _print_then_save(item_id, name, weight_g, unit, reason, label, kitchen_id, printer_name):
+    """Background: print first, then save to DB."""
     import threading, logging
     log = logging.getLogger(__name__)
 
     from backend.services.printing import _send_raw_to_printer, LOCAL_PRINT, HAS_WIN32
     if LOCAL_PRINT and HAS_WIN32:
         try:
-            _send_raw_to_printer(label)
+            _send_raw_to_printer(label, printer_name=printer_name)
         except Exception as e:
             log.error(f"[PRINT] Direct print failed: {e}")
 
@@ -149,6 +185,7 @@ def _print_then_save(item_id, name, weight_g, unit, reason, label):
             with engine.begin() as c:
                 c.execute(remote_items.insert().values(
                     id=item_id,
+                    kitchen_id=kitchen_id,
                     name=name,
                     weight_grams=weight_g,
                     unit=unit,
@@ -164,7 +201,11 @@ def _print_then_save(item_id, name, weight_g, unit, reason, label):
 
 
 @router.post("/items")
-async def create_item(body: CreateItemRequest, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+async def create_item(
+    body: CreateItemRequest,
+    background_tasks: BackgroundTasks,
+    kitchen: dict = Depends(require_permission("items.create")),
+):
     item_id = new_item_id()
 
     weight_g = int(body.weight)
@@ -178,10 +219,12 @@ async def create_item(body: CreateItemRequest, background_tasks: BackgroundTasks
         reason_data["notes"] = body.notes
     reason = json.dumps(reason_data) if reason_data else None
 
-    label = generate_label(item_id, body.name, weight_g)
+    label = generate_label(item_id, body.name, weight_g, kitchen=kitchen)
 
-    # Return immediately — save to DB and print in background
-    background_tasks.add_task(_print_then_save, item_id, body.name, weight_g, body.unit, reason, label)
+    background_tasks.add_task(
+        _print_then_save, item_id, body.name, weight_g, body.unit, reason, label,
+        kitchen["id"], kitchen.get("printer_name"),
+    )
 
     return {
         "id": item_id,
@@ -191,8 +234,43 @@ async def create_item(body: CreateItemRequest, background_tasks: BackgroundTasks
     }
 
 
+@router.post("/items/test-print")
+async def test_print_item(kitchen: dict = Depends(require_permission("items.create"))):
+    """Print a sample label to verify printer connectivity. Does NOT touch the
+    database (no items row, no print_jobs row). The label uses a TEST-* id so
+    it can never be confused with a real ingredient."""
+    import secrets as _secrets
+    from backend.services.printing import LOCAL_PRINT, HAS_WIN32, _send_raw_to_printer
+    from backend.api.print_queue import push_job_to_agent
+
+    test_id = "TEST-" + _secrets.token_hex(4).upper()
+    label = generate_label(test_id, "TEST PRINT", 0, kitchen=kitchen)
+
+    if LOCAL_PRINT and HAS_WIN32:
+        try:
+            _send_raw_to_printer(label, printer_name=kitchen.get("printer_name"))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Printer error: {e}")
+        return {"ok": True, "test_id": test_id, "mode": "local"}
+
+    # Cloud-print mode: push directly via WS without queueing in print_jobs.
+    # job_id=0 is a sentinel: the WS ack handler ignores falsy ids so no DB row
+    # gets marked.
+    pushed = await push_job_to_agent(0, label, kitchen_id=kitchen["id"])
+    if not pushed:
+        raise HTTPException(
+            status_code=503,
+            detail="Printer agent offline. Check the scanner/printer connection.",
+        )
+    return {"ok": True, "test_id": test_id, "mode": "ws"}
+
+
 @router.put("/items/{item_id}")
-async def update_item(item_id: str, body: UpdateItemRequest, user: dict = Depends(get_current_user)):
+async def update_item(
+    item_id: str,
+    body: UpdateItemRequest,
+    kitchen: dict = Depends(require_permission("items.edit")),
+):
     values = {}
     if body.name is not None:
         values["name"] = body.name
@@ -209,7 +287,12 @@ async def update_item(item_id: str, body: UpdateItemRequest, user: dict = Depend
 
     with engine.begin() as c:
         result = c.execute(
-            remote_items.update().where(remote_items.c.id == item_id).values(**values)
+            remote_items.update()
+            .where(
+                (remote_items.c.id == item_id) &
+                (remote_items.c.kitchen_id == kitchen["id"])
+            )
+            .values(**values)
         )
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Item not found")
@@ -218,10 +301,14 @@ async def update_item(item_id: str, body: UpdateItemRequest, user: dict = Depend
 
 
 @router.delete("/items/{item_id}")
-async def delete_item(item_id: str, user: dict = Depends(get_current_user)):
+async def delete_item(item_id: str, kitchen: dict = Depends(require_permission("items.edit"))):
     with engine.begin() as c:
         result = c.execute(
-            remote_items.delete().where(remote_items.c.id == item_id)
+            remote_items.delete()
+            .where(
+                (remote_items.c.id == item_id) &
+                (remote_items.c.kitchen_id == kitchen["id"])
+            )
         )
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Item not found")
@@ -235,11 +322,12 @@ async def delete_item(item_id: str, user: dict = Depends(get_current_user)):
 async def get_trays(
     date_filter: Optional[str] = Query(None, alias="date"),
     page: int = Query(1, ge=1),
-    user: dict = Depends(get_current_user),
+    kitchen: dict = Depends(get_current_kitchen),
 ):
     offset = (page - 1) * PAGE_SIZE
-    q = select(remote_trays).order_by(remote_trays.c.created_at_packing.desc().nullslast())
-    count_q = select(func.count()).select_from(remote_trays)
+    kid = kitchen["id"]
+    q = select(remote_trays).where(remote_trays.c.kitchen_id == kid).order_by(remote_trays.c.created_at_packing.desc().nullslast())
+    count_q = select(func.count()).select_from(remote_trays).where(remote_trays.c.kitchen_id == kid)
 
     if date_filter:
         q = q.where(remote_trays.c.created_date_packing == date_filter)
@@ -276,21 +364,11 @@ MEALS_PER_SCAN = 10
 
 
 def _compute_deliveries(n_scans: int, schools_sorted: list, delivery_rows: list) -> list:
-    """
-    For each school return meals_delivered and last_delivered_at given n_scans today.
-
-    Phase 1 — full batches: school i's floor(students/10) scans come first
-    in distance order. Each scan = MEALS_PER_SCAN meals to that school only.
-
-    Phase 2 — remainder pool: remainders (students % 10) are pooled in
-    distance order, filled scan-by-scan across schools.
-    """
     meals: dict = {s["school_id"]: 0 for s in schools_sorted}
     last_idx: dict = {}
 
-    # Phase 1
     remaining = n_scans
-    scan_cursor = 0  # 0-based index into delivery_rows
+    scan_cursor = 0
     for school in schools_sorted:
         sid = school["school_id"]
         n_full = int(school["student_count"]) // MEALS_PER_SCAN
@@ -305,7 +383,6 @@ def _compute_deliveries(n_scans: int, schools_sorted: list, delivery_rows: list)
 
     total_full_scans = sum(int(s["student_count"]) // MEALS_PER_SCAN for s in schools_sorted)
 
-    # Phase 2
     if remaining > 0:
         combined_avail = remaining * MEALS_PER_SCAN
         cum_rem = 0
@@ -317,7 +394,6 @@ def _compute_deliveries(n_scans: int, schools_sorted: list, delivery_rows: list)
             take = min(remainder, combined_avail)
             if take > 0:
                 meals[sid] += take
-                # Last meal position in the combined pool (1-based)
                 last_meal_pos = cum_rem + take
                 last_combined_scan = (last_meal_pos - 1) // MEALS_PER_SCAN
                 last_idx[sid] = total_full_scans + last_combined_scan
@@ -348,20 +424,20 @@ def _compute_deliveries(n_scans: int, schools_sorted: list, delivery_rows: list)
 @router.get("/delivery")
 async def get_delivery(
     date_filter: Optional[str] = Query(None, alias="date"),
-    user: dict = Depends(get_current_user),
+    kitchen: dict = Depends(get_current_kitchen),
 ):
     target_date = date.fromisoformat(date_filter) if date_filter else date.today()
 
-    with open(SCHOOLS_FILE, "r", encoding="utf-8") as f:
-        schools_raw = json.load(f)
+    # Phase 1: schools come from DB (kitchen-scoped). JSON file is now seed-only.
+    schools_raw = db_list_schools(kitchen["id"], active_only=True)
     schools_sorted = sorted(schools_raw, key=lambda s: s["distance"])
 
     with engine.connect() as c:
         delivery_rows = c.execute(text("""
             SELECT tray_id, created_at_delivery FROM trays
-            WHERE created_date_delivery = :d AND delivery = true
+            WHERE created_date_delivery = :d AND delivery = true AND kitchen_id = :kid
             ORDER BY created_at_delivery ASC
-        """), {"d": str(target_date)}).fetchall()
+        """), {"d": str(target_date), "kid": kitchen["id"]}).fetchall()
 
     result = _compute_deliveries(len(delivery_rows), schools_sorted, delivery_rows)
     return {"assignments": result, "date": str(target_date)}
@@ -372,53 +448,50 @@ async def get_delivery(
 @router.get("/stats")
 async def get_stats(
     date_filter: Optional[str] = Query(None, alias="date"),
-    user: dict = Depends(get_current_user),
+    kitchen: dict = Depends(get_current_kitchen),
 ):
     from datetime import timedelta
     target = date.fromisoformat(date_filter) if date_filter else date.today()
     week_start = target - timedelta(days=6)
+    kid = kitchen["id"]
 
     with engine.connect() as c:
-        # Hourly scan activity (all scan types combined)
         hourly_rows = c.execute(text("""
             SELECT hour, SUM(cnt) AS scans FROM (
                 SELECT EXTRACT(HOUR FROM created_at_receiving)::int AS hour, COUNT(*) AS cnt
-                FROM items WHERE created_date_receiving = :d AND created_at_receiving IS NOT NULL GROUP BY 1
+                FROM items WHERE created_date_receiving = :d AND created_at_receiving IS NOT NULL AND kitchen_id = :kid GROUP BY 1
                 UNION ALL
                 SELECT EXTRACT(HOUR FROM created_at_processing)::int, COUNT(*)
-                FROM items WHERE created_date_processing = :d AND created_at_processing IS NOT NULL GROUP BY 1
+                FROM items WHERE created_date_processing = :d AND created_at_processing IS NOT NULL AND kitchen_id = :kid GROUP BY 1
                 UNION ALL
                 SELECT EXTRACT(HOUR FROM created_at_packing)::int, COUNT(*)
-                FROM trays WHERE created_date_packing = :d AND created_at_packing IS NOT NULL GROUP BY 1
+                FROM trays WHERE created_date_packing = :d AND created_at_packing IS NOT NULL AND kitchen_id = :kid GROUP BY 1
                 UNION ALL
                 SELECT EXTRACT(HOUR FROM created_at_delivery)::int, COUNT(*)
-                FROM trays WHERE created_date_delivery = :d AND created_at_delivery IS NOT NULL GROUP BY 1
+                FROM trays WHERE created_date_delivery = :d AND created_at_delivery IS NOT NULL AND kitchen_id = :kid GROUP BY 1
             ) sub GROUP BY hour ORDER BY hour
-        """), {"d": str(target)}).fetchall()
+        """), {"d": str(target), "kid": kid}).fetchall()
 
-        # 7-day receiving trend
         trend_rows = c.execute(text("""
             SELECT created_date_receiving AS day, COUNT(*) AS received
             FROM items
-            WHERE created_date_receiving >= :start AND created_date_receiving <= :end
+            WHERE created_date_receiving >= :start AND created_date_receiving <= :end AND kitchen_id = :kid
             GROUP BY created_date_receiving ORDER BY created_date_receiving
-        """), {"start": str(week_start), "end": str(target)}).fetchall()
+        """), {"start": str(week_start), "end": str(target), "kid": kid}).fetchall()
 
-        # Avg receiving → processing duration (minutes)
         r2p = c.execute(text("""
             SELECT AVG(EXTRACT(EPOCH FROM (created_at_processing - created_at_receiving)) / 60)
             FROM items
-            WHERE created_date_receiving = :d
+            WHERE created_date_receiving = :d AND kitchen_id = :kid
               AND created_at_processing IS NOT NULL AND created_at_receiving IS NOT NULL
-        """), {"d": str(target)}).scalar()
+        """), {"d": str(target), "kid": kid}).scalar()
 
-        # Avg packing → delivery duration (minutes)
         p2d = c.execute(text("""
             SELECT AVG(EXTRACT(EPOCH FROM (created_at_delivery - created_at_packing)) / 60)
             FROM trays
-            WHERE created_date_packing = :d
+            WHERE created_date_packing = :d AND kitchen_id = :kid
               AND created_at_delivery IS NOT NULL AND created_at_packing IS NOT NULL
-        """), {"d": str(target)}).scalar()
+        """), {"d": str(target), "kid": kid}).scalar()
 
     schools = load_schools_from_json(SCHOOLS_FILE)
     total_students = sum(int(s.student_count) for s in schools)
@@ -438,15 +511,18 @@ async def get_stats(
 @router.get("/scan-errors")
 async def get_scan_errors(
     page: int = Query(1, ge=1),
-    user: dict = Depends(get_current_user),
+    kitchen: dict = Depends(require_permission("scan_errors.view")),
 ):
     offset = (page - 1) * PAGE_SIZE
+    kid = kitchen["id"]
     with engine.connect() as c:
         total = c.execute(
             select(func.count()).select_from(remote_scan_errors)
+            .where(remote_scan_errors.c.kitchen_id == kid)
         ).scalar() or 0
         rows = c.execute(
             select(remote_scan_errors)
+            .where(remote_scan_errors.c.kitchen_id == kid)
             .order_by(remote_scan_errors.c.id.desc())
             .limit(PAGE_SIZE).offset(offset)
         ).fetchall()
@@ -473,10 +549,16 @@ async def get_scan_errors(
 # ── Schools ──────────────────────────────────────────────────────────────────
 
 @router.get("/schools")
-async def get_schools(user: dict = Depends(get_current_user)):
-    with open(SCHOOLS_FILE, "r", encoding="utf-8") as f:
-        schools = json.load(f)
-    return {"schools": schools}
+async def get_schools(
+    user: dict = Depends(get_current_user),
+    kitchen: dict = Depends(get_current_kitchen),
+):
+    """Phase 1: kitchen-scoped DB lookup. Returns same shape as legacy JSON,
+    so existing frontend callers (Dashboard, NutritionReport, Countdown) keep
+    working. Inactive schools are filtered out for the operational endpoint;
+    use `/api/admin/schools?include_inactive=true` for the admin list.
+    """
+    return {"schools": db_list_schools(kitchen["id"], active_only=True)}
 
 
 # ── Countdown (public — no auth) ──────────────────────────────────────────────
@@ -486,6 +568,8 @@ SAFE_HOURS = 4
 
 @router.get("/countdown/{tray_id}")
 async def get_countdown(tray_id: str):
+    """Public endpoint: since tray_id is not globally unique across kitchens,
+    we resolve the most recently delivered tray with that id across all kitchens."""
     from datetime import timedelta
     from backend.api.scans import _scan_allocations
 
@@ -495,7 +579,11 @@ async def get_countdown(tray_id: str):
                 remote_trays.c.delivery,
                 remote_trays.c.created_at_delivery,
                 remote_trays.c.created_date_delivery,
-            ).where(remote_trays.c.tray_id == tray_id)
+                remote_trays.c.kitchen_id,
+            )
+            .where(remote_trays.c.tray_id == tray_id)
+            .order_by(remote_trays.c.created_at_delivery.desc().nullslast())
+            .limit(1)
         ).first()
 
     if row is None:
@@ -522,9 +610,9 @@ async def get_countdown(tray_id: str):
         with engine.connect() as c:
             scan_rows = c.execute(text("""
                 SELECT tray_id FROM trays
-                WHERE created_date_delivery = :d AND delivery = true
+                WHERE created_date_delivery = :d AND delivery = true AND kitchen_id = :kid
                 ORDER BY created_at_delivery ASC
-            """), {"d": str(row.created_date_delivery)}).fetchall()
+            """), {"d": str(row.created_date_delivery), "kid": row.kitchen_id}).fetchall()
 
         scan_order = [r[0] for r in scan_rows]
         try:
@@ -550,7 +638,7 @@ async def get_countdown(tray_id: str):
 @router.get("/export/daily")
 async def export_daily(
     date_filter: Optional[str] = Query(None, alias="date"),
-    user: dict = Depends(get_current_user),
+    kitchen: dict = Depends(require_permission("export.daily")),
 ):
     try:
         import openpyxl
@@ -559,32 +647,33 @@ async def export_daily(
         raise HTTPException(status_code=500, detail="openpyxl not installed. Run: pip install openpyxl")
 
     target = date.fromisoformat(date_filter) if date_filter else date.today()
+    kid = kitchen["id"]
 
     with engine.connect() as c:
         items_rows = c.execute(text("""
             SELECT id, name, weight_grams, unit,
                    created_at_receiving, created_at_processing
             FROM items
-            WHERE created_date_receiving = :d
+            WHERE created_date_receiving = :d AND kitchen_id = :kid
             ORDER BY created_at_receiving ASC
-        """), {"d": str(target)}).fetchall()
+        """), {"d": str(target), "kid": kid}).fetchall()
 
         tray_rows = c.execute(text("""
             SELECT tray_id, created_at_packing, created_at_delivery
             FROM trays
-            WHERE created_date_packing = :d OR created_date_delivery = :d
+            WHERE (created_date_packing = :d OR created_date_delivery = :d)
+              AND kitchen_id = :kid
             ORDER BY created_at_packing ASC
-        """), {"d": str(target)}).fetchall()
+        """), {"d": str(target), "kid": kid}).fetchall()
 
     wb = openpyxl.Workbook()
 
-    # ── Sheet 1: Summary ──
     ws_sum = wb.active
     ws_sum.title = "Ringkasan"
     header_fill = PatternFill("solid", fgColor="1B3A6B")
     header_font = Font(bold=True, color="FFFFFF")
 
-    ws_sum.append(["Laporan Harian MBG", str(target)])
+    ws_sum.append([f"Laporan Harian — {kitchen['name']}", str(target)])
     ws_sum.append([])
     ws_sum.append(["Metrik", "Jumlah"])
     for cell in ws_sum[3]:
@@ -603,7 +692,6 @@ async def export_daily(
     ws_sum.column_dimensions["A"].width = 20
     ws_sum.column_dimensions["B"].width = 15
 
-    # ── Sheet 2: Items ──
     ws_items = wb.create_sheet("Item Bahan")
     headers = ["ID", "Nama", "Berat (g)", "Satuan", "Waktu Terima", "Waktu Proses"]
     ws_items.append(headers)
@@ -616,7 +704,6 @@ async def export_daily(
     for col, width in zip(["A","B","C","D","E","F"], [16, 25, 10, 8, 22, 22]):
         ws_items.column_dimensions[col].width = width
 
-    # ── Sheet 3: Trays ──
     ws_trays = wb.create_sheet("Tray")
     headers = ["Tray ID", "Waktu Packing", "Waktu Delivery"]
     ws_trays.append(headers)
@@ -632,9 +719,198 @@ async def export_daily(
     wb.save(buf)
     buf.seek(0)
 
-    filename = f"laporan_mbg_{target}.xlsx"
+    filename = f"laporan_{kitchen['slug']}_{target}.xlsx"
     return StreamingResponse(
         buf,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+# ── Export laporan rentang tanggal (weekly / monthly / custom) ────────────────
+
+@router.get("/export/range")
+async def export_range(
+    from_date: str = Query(..., alias="from"),
+    to_date: str = Query(..., alias="to"),
+    kitchen: dict = Depends(require_permission("export.range")),
+):
+    """Excel report across a date range with per-day breakdown.
+
+    Use for weekly/monthly reconciliation. Accountant & admin only.
+    """
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill
+    except ImportError:
+        raise HTTPException(500, "openpyxl not installed. Run: pip install openpyxl")
+
+    try:
+        d_from = date.fromisoformat(from_date)
+        d_to = date.fromisoformat(to_date)
+    except ValueError:
+        raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
+    if d_from > d_to:
+        raise HTTPException(400, "'from' must be <= 'to'")
+    span_days = (d_to - d_from).days + 1
+    if span_days > 366:
+        raise HTTPException(400, "Range cannot exceed 366 days")
+
+    kid = kitchen["id"]
+    with engine.connect() as c:
+        per_day = c.execute(text("""
+            SELECT CAST(d AS date) AS day,
+                   COALESCE(i.received,  0)  AS received,
+                   COALESCE(i.processed, 0)  AS processed,
+                   COALESCE(t.packed,    0)  AS packed,
+                   COALESCE(t.delivered, 0)  AS delivered
+            FROM generate_series(CAST(:f AS date), CAST(:t AS date), interval '1 day') AS d
+            LEFT JOIN (
+                SELECT created_date_receiving AS day,
+                       COUNT(*) AS received,
+                       COUNT(created_at_processing) AS processed
+                FROM items
+                WHERE kitchen_id = :kid
+                  AND created_date_receiving BETWEEN CAST(:f AS date) AND CAST(:t AS date)
+                GROUP BY created_date_receiving
+            ) i ON i.day = CAST(d AS date)
+            LEFT JOIN (
+                SELECT created_date_packing AS day,
+                       COUNT(*) AS packed,
+                       COUNT(created_at_delivery) AS delivered
+                FROM trays
+                WHERE kitchen_id = :kid
+                  AND created_date_packing BETWEEN CAST(:f AS date) AND CAST(:t AS date)
+                GROUP BY created_date_packing
+            ) t ON t.day = CAST(d AS date)
+            ORDER BY d
+        """), {"f": str(d_from), "t": str(d_to), "kid": kid}).fetchall()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Ringkasan"
+    header_fill = PatternFill("solid", fgColor="1B3A6B")
+    header_font = Font(bold=True, color="FFFFFF")
+
+    ws.append([f"Laporan {d_from} s/d {d_to} — {kitchen['name']}"])
+    ws.append([])
+    ws.append(["Tanggal", "Diterima", "Diproses", "Packed", "Dikirim"])
+    for cell in ws[3]:
+        cell.font = header_font
+        cell.fill = header_fill
+
+    tot = [0, 0, 0, 0]
+    for r in per_day:
+        ws.append([str(r.day), r.received, r.processed, r.packed, r.delivered])
+        tot[0] += r.received; tot[1] += r.processed
+        tot[2] += r.packed;   tot[3] += r.delivered
+
+    ws.append([])
+    ws.append(["TOTAL", *tot])
+    for cell in ws[ws.max_row]:
+        cell.font = Font(bold=True)
+
+    for col, w in zip(["A","B","C","D","E"], [14, 12, 12, 12, 12]):
+        ws.column_dimensions[col].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    filename = f"laporan_{kitchen['slug']}_{d_from}_to_{d_to}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+# ── Waste / variance report (accountant / admin) ─────────────────────────────
+
+@router.get("/reports/variance")
+async def variance_report(
+    from_date: str = Query(..., alias="from"),
+    to_date: str = Query(..., alias="to"),
+    kitchen: dict = Depends(require_permission("reports.variance")),
+):
+    """Variance & waste summary for a date range.
+
+    Returns per-day counts + aggregates:
+      items_received → items_processed → trays_packed → trays_delivered
+    plus variance gaps (processed/received, delivered/packed) as percent.
+    """
+    try:
+        d_from = date.fromisoformat(from_date)
+        d_to = date.fromisoformat(to_date)
+    except ValueError:
+        raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
+    if d_from > d_to:
+        raise HTTPException(400, "'from' must be <= 'to'")
+    if (d_to - d_from).days > 366:
+        raise HTTPException(400, "Range cannot exceed 366 days")
+
+    kid = kitchen["id"]
+    with engine.connect() as c:
+        per_day = c.execute(text("""
+            SELECT CAST(d AS date) AS day,
+                   COALESCE(i.received,  0)  AS received,
+                   COALESCE(i.processed, 0)  AS processed,
+                   COALESCE(t.packed,    0)  AS packed,
+                   COALESCE(t.delivered, 0)  AS delivered
+            FROM generate_series(CAST(:f AS date), CAST(:t AS date), interval '1 day') AS d
+            LEFT JOIN (
+                SELECT created_date_receiving AS day,
+                       COUNT(*) AS received,
+                       COUNT(created_at_processing) AS processed
+                FROM items
+                WHERE kitchen_id = :kid
+                  AND created_date_receiving BETWEEN CAST(:f AS date) AND CAST(:t AS date)
+                GROUP BY created_date_receiving
+            ) i ON i.day = CAST(d AS date)
+            LEFT JOIN (
+                SELECT created_date_packing AS day,
+                       COUNT(*) AS packed,
+                       COUNT(created_at_delivery) AS delivered
+                FROM trays
+                WHERE kitchen_id = :kid
+                  AND created_date_packing BETWEEN CAST(:f AS date) AND CAST(:t AS date)
+                GROUP BY created_date_packing
+            ) t ON t.day = CAST(d AS date)
+            ORDER BY d
+        """), {"f": str(d_from), "t": str(d_to), "kid": kid}).fetchall()
+
+    days = []
+    tot = {"received": 0, "processed": 0, "packed": 0, "delivered": 0}
+    for r in per_day:
+        rec, pro, pkd, dlv = r.received, r.processed, r.packed, r.delivered
+        days.append({
+            "date": str(r.day),
+            "received":  rec,
+            "processed": pro,
+            "packed":    pkd,
+            "delivered": dlv,
+            "processed_pct": round(100.0 * pro / rec, 1) if rec else None,
+            "delivered_pct": round(100.0 * dlv / pkd, 1) if pkd else None,
+        })
+        tot["received"] += rec
+        tot["processed"] += pro
+        tot["packed"] += pkd
+        tot["delivered"] += dlv
+
+    def _pct(num, den):
+        return round(100.0 * num / den, 1) if den else None
+
+    summary = {
+        **tot,
+        "processed_pct":  _pct(tot["processed"], tot["received"]),
+        "delivered_pct":  _pct(tot["delivered"], tot["packed"]),
+        "processing_waste_pct": _pct(tot["received"] - tot["processed"], tot["received"]),
+        "delivery_waste_pct":   _pct(tot["packed"] - tot["delivered"], tot["packed"]),
+    }
+    return {
+        "kitchen": {"id": kitchen["id"], "slug": kitchen["slug"], "name": kitchen["name"]},
+        "from": str(d_from),
+        "to": str(d_to),
+        "days": days,
+        "summary": summary,
+    }

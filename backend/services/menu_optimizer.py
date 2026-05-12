@@ -60,13 +60,18 @@ def _safe_float(val: str) -> float:
         return 0.0
 
 
-def load_tkpi(path: str = TKPI_PATH, db_prices: Optional[dict] = None) -> list[dict]:
+def load_tkpi(
+    path: str = TKPI_PATH,
+    db_prices: Optional[dict] = None,
+    nutrition_overrides: Optional[dict] = None,
+) -> list[dict]:
     """
     Load TKPI CSV and return food items ready for LP optimization.
 
-    db_prices: optional dict {food_code: price_per_100g} from food_prices table.
-               When provided, overrides the CSV price column (which starts at 0).
-               Items with price=0 after overlay are excluded from optimization.
+    db_prices: optional {food_code: price_per_100g} from food_prices table.
+    nutrition_overrides: optional {food_code: {field: value, ...}} from the
+        food_nutrition_overrides table; merged AFTER CSV row, so explicit
+        overrides win over TKPI defaults.
     """
     items = []
     with open(path, "r", encoding="utf-8-sig") as f:
@@ -82,6 +87,16 @@ def load_tkpi(path: str = TKPI_PATH, db_prices: Optional[dict] = None) -> list[d
                 if key in ("code", "name"):
                     continue
                 item[key] = _safe_float(row.get(csv_col, ""))
+
+            # Overlay nutrition overrides (per kitchen)
+            if nutrition_overrides and code in nutrition_overrides:
+                for k, v in (nutrition_overrides[code] or {}).items():
+                    if k in ("code", "name"):
+                        continue
+                    try:
+                        item[k] = float(v)
+                    except (TypeError, ValueError):
+                        pass
 
             # Overlay DB price (per 100g) if available
             if db_prices and code in db_prices:

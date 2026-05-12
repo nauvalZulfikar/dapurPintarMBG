@@ -2,5 +2,45 @@ __pycache__/
 *.pyc
 *.db
 .env
+.env.agent
 node_modules/
 .ssh/
+
+# Secrets / local-only
+api_keys.json
+list_api_keys.py
+
+# Office temp lock files
+~$*
+
+# Unrelated notebooks
+review stats/
+
+# Python
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Claude Code agent state
+tmp/
+docs/spec.md
+docs/architecture.md
+
+# Test artifacts (Playwright screenshots created at script root)
+*.png
+!docs/screenshots/*.png
+!frontend/public/**/*.png
+
+# Uploaded defect QC photos (user data, not source)
+data/defect_photos/

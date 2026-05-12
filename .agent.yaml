@@ -1,0 +1,60 @@
+agent:
+  id: dpmbg
+  name: "Dapur Pintar MBG"
+
+watch:
+  paths:
+    - "app/"
+    - "src/"
+    - "api/"
+  ignore:
+    - "node_modules/"
+    - ".git/"
+    - "__pycache__/"
+    - "*.log"
+    - "agent.log"
+    - "agent_queue.json"
+    - ".next/"
+    - "dist/"
+    - "build/"
+    - "venv/"
+    - ".venv/"
+    - "vendor/"
+    - "storage/"
+  debounce_ms: 1000
+
+orchestrator:
+  url: "${ORCHESTRATOR_URL}"
+  secret: "${AGENT_SECRET}"
+  timeout_sec: 30
+  retry_attempts: 3
+
+llm:
+  provider: openrouter
+  model: deepseek/deepseek-chat-v3-0324
+  fallback_provider: groq
+  fallback_model: llama-3.3-70b-versatile
+  max_tokens: 4096
+  temperature: 0.2
+  context:
+    max_context_lines: 200
+    include_git_diff: true
+    tree_depth: 5
+
+deploy:
+  domain: dapurpintarmbg.aureonforge.com
+  port: 0
+  type: python
+  install_cmd: "pip install -r requirements.txt"
+  build_cmd: ""
+  start_cmd: "uvicorn main:app --host 0.0.0.0 --port 8000"
+
+permissions:
+  can_edit_files: true
+  can_run_commands: false
+  can_deploy: true
+  protected_paths:
+    - ".env"
+    - ".env.production"
+    - ".env.agent"
+    - "secrets/"

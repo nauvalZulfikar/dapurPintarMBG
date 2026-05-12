@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { getCountdown } from '../api/countdown'
+import { confirmReceipt, listConfirmationsPublic } from '../api/distributions'
 
 function pad(n) {
   return String(Math.max(0, n)).padStart(2, '0')
@@ -22,6 +23,12 @@ export default function Countdown() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [secondsLeft, setSecondsLeft] = useState(null)
+  const [confirmations, setConfirmations] = useState([])
+  const [confirmingFor, setConfirmingFor] = useState(null)
+  const [confirmCount, setConfirmCount] = useState('')
+  const [confirmNotes, setConfirmNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [confirmMsg, setConfirmMsg] = useState('')
 
   const load = useCallback(() => {
     getCountdown(trayId)
@@ -32,9 +39,45 @@ export default function Countdown() {
       .catch((err) => {
         setError(err.response?.status === 404 ? 'Tray tidak ditemukan.' : 'Gagal memuat data.')
       })
+    listConfirmationsPublic(trayId)
+      .then(r => setConfirmations(r.data.confirmations || []))
+      .catch(() => {})
   }, [trayId])
 
   useEffect(() => { load() }, [load])
+
+  const startConfirm = (alloc) => {
+    setConfirmingFor(alloc)
+    setConfirmCount(String(alloc.n_trays))
+    setConfirmNotes('')
+    setConfirmMsg('')
+  }
+
+  const submitConfirm = async () => {
+    if (!confirmingFor) return
+    const cnt = parseInt(confirmCount, 10)
+    if (!cnt || cnt < 0) { setConfirmMsg('Jumlah ompreng invalid.'); return }
+    setSubmitting(true); setConfirmMsg('')
+    try {
+      await confirmReceipt(trayId, {
+        school_name: confirmingFor.school,
+        confirmed_count: cnt,
+        notes: confirmNotes || null,
+      })
+      setConfirmMsg(`✅ Konfirmasi tercatat: ${cnt} ompreng untuk ${confirmingFor.school}`)
+      setConfirmingFor(null); setConfirmCount(''); setConfirmNotes('')
+      // refresh list
+      const r = await listConfirmationsPublic(trayId)
+      setConfirmations(r.data.confirmations || [])
+    } catch (e) {
+      setConfirmMsg('Gagal: ' + (e.response?.data?.detail || e.message))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const confirmedCountFor = (schoolName) =>
+    confirmations.filter(c => c.school_name === schoolName).reduce((s, c) => s + (c.confirmed_count || 0), 0)
 
   // Tick down every second
   useEffect(() => {
@@ -75,15 +118,77 @@ export default function Countdown() {
               <div className="font-mono text-base font-semibold text-brand">{data.tray_id}</div>
             </div>
 
-            {/* School allocations */}
+            {/* School allocations + confirm buttons */}
             {data.allocations.length > 0 && (
               <div className="w-full max-w-sm bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-                {data.allocations.map((alloc, i) => (
-                  <div key={i} className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm font-medium text-gray-800">{alloc.school}</span>
-                    <span className="text-sm font-bold text-brand">{alloc.n_trays} porsi</span>
-                  </div>
-                ))}
+                {data.allocations.map((alloc, i) => {
+                  const confirmed = confirmedCountFor(alloc.school)
+                  return (
+                    <div key={i} className="px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-800">{alloc.school}</span>
+                        <span className="text-sm font-bold text-brand">{alloc.n_trays} porsi</span>
+                      </div>
+                      {confirmed > 0 ? (
+                        <div className="mt-1 text-xs text-green-700">✅ {confirmed} ompreng sudah dikonfirmasi</div>
+                      ) : (
+                        <button
+                          onClick={() => startConfirm(alloc)}
+                          className="mt-2 w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded">
+                          ☑ Konfirmasi Terima
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Confirm receipt modal */}
+            {confirmingFor && (
+              <div className="w-full max-w-sm bg-white rounded-xl border-2 border-blue-400 p-4">
+                <div className="text-sm font-semibold text-gray-800 mb-2">
+                  Konfirmasi: {confirmingFor.school}
+                </div>
+                <label className="block mb-2">
+                  <span className="text-xs text-gray-600 block mb-1">Jumlah ompreng diterima</span>
+                  <input
+                    type="number" min="0" max={confirmingFor.n_trays}
+                    value={confirmCount}
+                    onChange={(e) => setConfirmCount(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded"
+                    inputMode="numeric"
+                  />
+                  <span className="text-xs text-gray-400">Target: {confirmingFor.n_trays}</span>
+                </label>
+                <label className="block mb-3">
+                  <span className="text-xs text-gray-600 block mb-1">Catatan (opsional)</span>
+                  <input
+                    value={confirmNotes}
+                    onChange={(e) => setConfirmNotes(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded"
+                    placeholder="Bu Sari, dst."
+                  />
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={submitConfirm}
+                    disabled={submitting}
+                    className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded disabled:opacity-50">
+                    {submitting ? '...' : 'Submit'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmingFor(null)}
+                    className="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-sm rounded">
+                    Batal
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {confirmMsg && (
+              <div className="w-full max-w-sm text-xs text-center text-green-700 bg-green-50 border border-green-200 rounded p-2">
+                {confirmMsg}
               </div>
             )}
 

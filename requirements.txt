@@ -9,4 +9,5 @@ bcrypt
 pulp
 openpyxl
 apscheduler
+slowapi
 playwright
