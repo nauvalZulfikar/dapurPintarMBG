@@ -347,13 +347,13 @@ SVG_SIDEBAR = """<svg viewBox="0 0 280 420" xmlns="http://www.w3.org/2000/svg" s
   <text x="32" y="174" fill="rgba(255,255,255,0.75)" font-size="9">📝 Permintaan Siswa</text>
   <text x="20" y="198" fill="rgba(255,255,255,0.4)" font-size="8" font-weight="700" letter-spacing="0.08em">▼ PENERIMAAN</text>
   <text x="32" y="218" fill="rgba(255,255,255,0.75)" font-size="9">📦 Purchase Orders</text>
-  <text x="32" y="236" fill="rgba(255,255,255,0.75)" font-size="9">🔍 Inspeksi Bersama</text>
+  <text x="32" y="236" fill="rgba(255,255,255,0.75)" font-size="9">🤝 Joint Inspection</text>
   <text x="20" y="260" fill="rgba(255,255,255,0.4)" font-size="8" font-weight="700" letter-spacing="0.08em">▼ OPERASI DAPUR</text>
   <text x="32" y="280" fill="rgba(255,255,255,0.75)" font-size="9">🍳 Produksi Batch</text>
   <text x="20" y="304" fill="rgba(255,255,255,0.4)" font-size="8" font-weight="700" letter-spacing="0.08em">▼ DISTRIBUSI</text>
-  <text x="32" y="324" fill="rgba(255,255,255,0.75)" font-size="9">🚚 Distribusi Makanan</text>
+  <text x="32" y="324" fill="rgba(255,255,255,0.75)" font-size="9">🚐 Distribusi</text>
   <text x="20" y="348" fill="rgba(255,255,255,0.4)" font-size="8" font-weight="700" letter-spacing="0.08em">▼ LAPANGAN (ASLAP)</text>
-  <text x="32" y="368" fill="rgba(255,255,255,0.75)" font-size="9">🦺 Dasbor ASLAP</text>
+  <text x="32" y="368" fill="rgba(255,255,255,0.75)" font-size="9">📝 ASLAP Daily</text>
   <text x="20" y="392" fill="rgba(255,255,255,0.4)" font-size="8" font-weight="700" letter-spacing="0.08em">▼ KEUANGAN  ▼ EKSEKUTIF</text>
   <text x="20" y="408" fill="rgba(255,255,255,0.4)" font-size="8" font-weight="700" letter-spacing="0.08em">▼ MASTER DATA  ▼ ADMIN</text>
 </svg>"""
@@ -445,10 +445,10 @@ COVER = f"""<div class="cover">
 <!-- SHOT:dashboard -->
   </div>
   <div class="cover-meta">
-    <div class="cover-meta-item"><div class="val">10</div><div class="lbl">Fase Fitur</div></div>
+    <div class="cover-meta-item"><div class="val">14</div><div class="lbl">Bab Panduan</div></div>
     <div class="cover-meta-item"><div class="val">7</div><div class="lbl">Role Pengguna</div></div>
-    <div class="cover-meta-item"><div class="val">23</div><div class="lbl">Sekolah</div></div>
-    <div class="cover-meta-item"><div class="val">1.500+</div><div class="lbl">Porsi/Hari</div></div>
+    <div class="cover-meta-item"><div class="val">11</div><div class="lbl">Sekolah Binaan</div></div>
+    <div class="cover-meta-item"><div class="val">SPPG</div><div class="lbl">Paseh</div></div>
   </div>
   <p style="margin-top:36px;font-size:0.8rem;opacity:.5">DPMBG v1.0 — Mei 2026 · SPPG Paseh, Kabupaten Bandung</p>
 </div>"""
@@ -460,15 +460,15 @@ TOC_ITEMS = [
     (1,  "Mengenal DPMBG",                       "Pengantar"),
     (2,  "Login & Dashboard",                     "05:00"),
     (3,  "Notifikasi & Bell",                     "05:15"),
-    (4,  "Menu & Gizi — Build Manual",            "05:30"),
-    (5,  "Menu — Approval & Siklus 20 Hari",      "06:00"),
-    (6,  "Purchase Order & Supplier",             "06:15"),
-    (7,  "Inspeksi Bersama — 3 Tanda Tangan",     "06:30"),
-    (8,  "Produksi Batch & QR Scan",              "07:30"),
-    (9,  "Distribusi Makanan ke Sekolah",         "08:30"),
-    (10, "Pengawasan Lapangan — ASLAP",           "10:00"),
-    (11, "Keuangan — Expense, LRA & Tren Harga",  "13:00"),
-    (12, "Dashboard Eksekutif & BGN Bundle",      "14:00"),
+    (4,  "Build Menu Manual",                     "05:30"),
+    (5,  "Approval Menu & Siklus 20 Hari",        "06:00"),
+    (6,  "Purchase Orders & Master Supplier",     "06:15"),
+    (7,  "Joint Inspection — 3 Tanda Tangan",     "06:30"),
+    (8,  "Production — Tablet Kepala Chef",       "07:30"),
+    (9,  "Distribusi ke Sekolah (Wave 1 & 2)",    "08:30"),
+    (10, "ASLAP — Operasi Harian",                "10:00"),
+    (11, "Akuntan Finance — Expense, LRA & Price Trends", "13:00"),
+    (12, "Executive Dashboard & BGN Bundle",      "14:00"),
     (13, "Master Data & Admin",                   "Kapan Saja"),
     (14, "Cheat Sheet Harian",                    "Referensi Cepat"),
 ]
@@ -492,10 +492,10 @@ BAB1 = chapter(1, "🍱", "Mengenal DPMBG", "Pengantar", f"""
 </p>
 
 {story('''
-"Di balik 1.500 piring makan yang tiba tepat waktu di 23 sekolah setiap hari,
+"Di balik ribuan piring makan yang tiba tepat waktu di 11 sekolah binaan SPPG Paseh setiap hari,
 ada satu sistem yang bekerja diam-diam sejak subuh: DPMBG. Jam 04:00 truk supplier
-sudah di halaman dapur untuk inspeksi. Jam 05:30 Kepala Chef sudah memasak.
-Jam 08:00 Wave 1 jalan ke PAUD dan TK. Jam 10:00 Wave 2 jalan ke SD dan SMP.
+sudah di halaman dapur untuk Joint Inspection. Jam 05:30 Kepala Chef sudah memasak.
+Jam 08:00 Wave 1 jalan ke PAUD/TK/SD. Jam 10:00 Wave 2 jalan ke SMP.
 Semuanya terkoordinasi, terdokumentasi, dan terlapor — tanpa satu pun catatan kertas."
 ''')}
 
@@ -564,104 +564,69 @@ Semuanya terkoordinasi, terdokumentasi, dan terlapor — tanpa satu pun catatan 
 # BAB 2 — Login & Dashboard
 # ─────────────────────────────────────────────────────────────────────────────
 
-SCREEN_LOGIN = screen("/login", """
-<div style="max-width:320px;margin:0 auto;padding:30px;background:#F9FAFB;border-radius:10px;border:1px solid #E5E7EB">
-  <div style="text-align:center;margin-bottom:20px">
-    <div style="font-size:2rem">🍱</div>
-    <div style="font-weight:700;font-size:1.1rem;color:#1E3A8A">DPMBG</div>
-    <div style="font-size:0.8rem;color:#6B7280">Dapur Pintar MBG</div>
-  </div>
-  <div style="margin-bottom:12px">
-    <div style="font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:4px">Username</div>
-    <div style="background:white;border:2px solid #2563EB;border-radius:6px;padding:8px 12px;font-size:0.85rem;color:#374151">admin</div>
-  </div>
-  <div style="margin-bottom:16px">
-    <div style="font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:4px">Password</div>
-    <div style="background:white;border:1px solid #D1D5DB;border-radius:6px;padding:8px 12px;font-size:0.85rem;color:#374151">••••••••</div>
-  </div>
-  <div style="background:#2563EB;color:white;text-align:center;padding:10px;border-radius:6px;font-weight:600;font-size:0.9rem">Masuk</div>
-</div>
-""")
+SCREEN_LOGIN = screen("/login", "")
 
-SCREEN_DASHBOARD = screen("/", f"""
-<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-  {stat_row(('1.520','Target Porsi'), ('1.498','Terproses'), ('1.490','Terkirim'), ('98.2%','Konfirmasi'))}
-</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-  <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:12px">
-    <div style="font-size:0.75rem;font-weight:700;color:#059669">COST PER PORSI HARI INI</div>
-    <div style="font-size:1.8rem;font-weight:800;color:#065F46">Rp 13.200</div>
-    <div style="font-size:0.75rem;color:#6B7280">Target: Rp 15.000 ✅</div>
-  </div>
-  <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px">
-    <div style="font-size:0.75rem;font-weight:700;color:#2563EB">DEFECT RATE</div>
-    <div style="font-size:1.8rem;font-weight:800;color:#1E40AF">0.8%</div>
-    <div style="font-size:0.75rem;color:#6B7280">Threshold: &lt;2% ✅</div>
-  </div>
-</div>
-""")
+SCREEN_DASHBOARD = screen("/", "")
 
 BAB2 = chapter(2, "🔑", "Login & Dashboard", "04:30", f"""
 {roles('kepala','nutritionist','accountant','aslap','chef')}
 
 {story('''
 <strong>04:30 pagi.</strong> Kepala SPPG tiba di dapur — truk supplier sudah di halaman
-sejak jam 04:00 dan ASLAP sedang menangani inspeksi. Kepala SPPG langsung buka laptop
-dan login ke DPMBG. Dalam 30 detik dia sudah tahu: 1.520 porsi ditargetkan hari ini,
-cost per porsi kemarin Rp 13.200 (di bawah target Rp 15.000), dan inspeksi berjalan lancar.
+sejak jam 04:00 dan ASLAP sedang menangani Joint Inspection. Kepala SPPG langsung buka laptop
+dan login ke DPMBG. Begitu masuk Dashboard, dia langsung tahu kondisi 4 KPI utama hari ini —
+Items Received, Items Processed, Trays Packed, Trays Delivered — beserta Pipeline Funnel
+yang menunjukkan konversi tiap tahap. Tinggal lihat sekejap.
 ''')}
 
 <h3>Login ke DPMBG</h3>
 {SCREEN_LOGIN}
 
 {steps([
-  ('Buka browser, akses <code>http://dpmbg.sppg-paseh.id</code> (atau localhost:5173 untuk lokal)', ''),
-  ('Masukkan <strong>Username</strong> dan <strong>Password</strong> yang diberikan admin', ''),
-  ('Klik tombol <strong>Masuk</strong>', ''),
+  ('Buka browser, akses <code>https://dapurpintarmbg.com</code> (atau <code>http://localhost:5173</code> untuk lokal dev)', ''),
+  ('Di kartu login bertanda <strong>DAPUR PINTAR · MBG</strong>, isi <strong>Username</strong> dan <strong>Password</strong> yang diberikan admin', ''),
+  ('Klik tombol biru <strong>Login</strong>', ''),
   ('Anda akan diarahkan ke halaman Dashboard sesuai role Anda', ''),
 ])}
 
-{tip('Setiap role melihat dashboard yang berbeda. Kepala SPPG melihat KPI lengkap; ASLAP melihat ringkasan distribusi; Kepala Chef melihat status batch produksi.')}
+{tip('Setiap role melihat menu sidebar yang berbeda. Kepala SPPG melihat semua; ASLAP hanya melihat menu Lapangan & Distribusi; Kepala Chef hanya melihat Produksi.')}
 {warn('Jangan bagikan password dengan siapapun. Setiap aksi di sistem terekam dengan nama pengguna yang login.')}
 
 <h3>Halaman Dashboard</h3>
-{SCREEN_DASHBOARD}
+<!-- SHOT:dashboard -->
 
-<p>Dashboard menampilkan ringkasan operasional hari ini secara real-time:</p>
+<p>Dashboard menampilkan 4 kartu metrik utama di atas, <strong>Pipeline Funnel</strong> (Received → Processed → Packed → Delivered), dan beberapa widget operasional. Saat dapur belum mulai operasi, semua angka kosong/0% — angka terisi otomatis begitu QR scan mulai dilakukan di gudang dan dapur.</p>
 {data_table(
   ['Kartu / Widget', 'Artinya', 'Siapa yang Peduli'],
   [
-    ['Target Porsi', 'Jumlah porsi yang harus diproduksi hari ini', 'Semua role'],
-    ['Terproses', 'Porsi yang sudah keluar dari batch produksi', 'Kepala SPPG, Chef'],
-    ['Terkirim', 'Porsi yang sudah dikirim ke sekolah', 'ASLAP, Kepala SPPG'],
-    ['% Konfirmasi', 'Sekolah yang sudah konfirmasi terima', 'ASLAP, Kepala SPPG'],
-    ['Cost per Porsi', 'Total biaya dibagi jumlah porsi hari ini', 'Akuntan, Kepala SPPG'],
-    ['Defect Rate', 'Persen bahan yang ditolak saat inspeksi', 'Ahli Gizi, Kepala SPPG'],
+    ['Items Received', 'Jumlah container bahan yang sudah di-scan masuk gudang', 'Kepala SPPG, ASLAP'],
+    ['Items Processed', 'Container yang sudah di-scan masuk dapur (siap diolah)', 'Kepala SPPG, Chef'],
+    ['Trays Packed', 'Tray porsi yang sudah dikemas siap kirim', 'Chef, ASLAP'],
+    ['Trays Delivered', 'Tray yang sudah dikirim ke sekolah', 'ASLAP, Kepala SPPG'],
+    ['Pipeline Funnel', 'Konversi Received → Processed → Packed → Delivered (%)', 'Kepala SPPG'],
+    ['Item Processing Rate', 'Persentase container yang sudah diproses dari yang diterima', 'Chef, Kepala SPPG'],
+    ['Tray Fill Rate', 'Persentase tray terisi sesuai kebutuhan siswa', 'Chef, Ahli Gizi'],
+    ['Avg Durations', 'Rata-rata waktu Receiving→Processing & Packing→Delivery (lebih pendek lebih baik)', 'Kepala SPPG'],
+    ['Hourly Scan Activity', 'Aktivitas scan QR per jam — tools tracking ritme operasional', 'Kepala SPPG'],
   ]
 )}
 
+<p>Di kanan atas ada <strong>date picker</strong> (default hari ini) + tombol <strong>Export Daily</strong> dan <strong>Export Range</strong> untuk download CSV.</p>
+
 <h3>Navigasi Sidebar</h3>
-<div class="cols">
-  <div class="col">
-<!-- SHOT:dashboard -->
-  </div>
-  <div class="col">
-    <p>Sidebar kiri berisi semua fitur, dikelompokkan dalam 8 grup yang bisa dilipat/dibuka (<strong>klik nama grup</strong> untuk toggle):</p>
-    <ul>
-      <li><strong>🏠 Dashboard</strong> — halaman utama</li>
-      <li><strong>▼ MENU & GIZI</strong> — Build Menu, Approval, Student Requests</li>
-      <li><strong>▼ PENERIMAAN</strong> — PO, Inspeksi, Tren Harga</li>
-      <li><strong>▼ OPERASI DAPUR</strong> — Produksi, QR Scan</li>
-      <li><strong>▼ DISTRIBUSI</strong> — Kirim ke sekolah, leftovers</li>
-      <li><strong>▼ LAPANGAN (ASLAP)</strong> — Checklist, Air, Laporan</li>
-      <li><strong>▼ KEUANGAN</strong> — Expense, LRA, Relawan</li>
-      <li><strong>▼ EKSEKUTIF</strong> — KPI, Compliance, Ranking</li>
-      <li><strong>▼ MASTER DATA</strong> — Sekolah, Supplier</li>
-      <li><strong>▼ ADMIN</strong> — Pengguna, Dapur</li>
-    </ul>
-    {tip('Pilihan grup yang terbuka tersimpan otomatis di browser — besok langsung terbuka di grup yang sama.')}
-  </div>
-</div>
+<p>Sidebar kiri berisi semua fitur, dikelompokkan dalam beberapa grup yang bisa dilipat/dibuka (<strong>klik nama grup</strong> untuk toggle). Item yang tidak sesuai permission Anda otomatis disembunyikan.</p>
+<ul>
+  <li><strong>(pinned)</strong> ⊞ <strong>Dashboard</strong>, 📈 <strong>Executive</strong> — selalu di paling atas</li>
+  <li><strong>▼ MENU & GIZI</strong> — Menu Planner, Build Manual, Approval Menu, Nutrisi Harian</li>
+  <li><strong>▼ PENERIMAAN BAHAN</strong> — Purchase Orders, Joint Inspection, Receiving (Quick)</li>
+  <li><strong>▼ PRODUKSI & DISTRIBUSI</strong> — Production, Distribusi</li>
+  <li><strong>▼ LAPANGAN & MONITORING</strong> — ASLAP Daily, Scan Errors, Variance Report</li>
+  <li><strong>▼ KEUANGAN</strong> — Akuntan Finance</li>
+  <li><strong>▼ MASTER DATA</strong> — Sekolah, Supplier</li>
+  <li><strong>▼ ADMIN DAPUR</strong> — All Kitchens (superadmin), Kitchens, Users</li>
+  <li><strong>▼ PLATFORM</strong> — Organizations (hanya Platform Admin)</li>
+</ul>
+{tip('Header sidebar menampilkan brand "DAPUR PINTAR · SPPG Paseh", dropdown switcher Kitchen (kalau punya akses multi-dapur), dan ikon bell 🔔 notifikasi.')}
 """)
 
 
@@ -673,20 +638,19 @@ BAB3 = chapter(3, "🔔", "Notifikasi & Bell", "04:30", f"""
 {roles('kepala','nutritionist','accountant','aslap','chef')}
 
 {story('''
-<strong>04:30 pagi.</strong> Setelah login, Kepala SPPG melihat angka merah kecil di pojok kanan atas: <strong>3</strong>.
-Tiga notifikasi baru sejak semalam. Dia klik bell — ada menu yang sudah disubmit Ahli Gizi kemarin
-dan menunggu approval-nya, satu alert inspeksi baru yang baru saja dibuat ASLAP,
-dan satu pengingat food sample yang hampir lewat 48 jam. Semua ditangani dari satu panel.
+<strong>04:30 pagi.</strong> Setelah login, Kepala SPPG melihat ikon bell 🔔 di area brand sidebar (kiri atas, di samping label "Dapur Pintar · SPPG Paseh"). Kalau ada notifikasi baru, ikon bell menyala kuning sebagai indikator. Dia klik bell — daftar notifikasi terbuka: menu yang sudah disubmit Ahli Gizi kemarin menunggu approval-nya, alert inspeksi baru yang baru saja dibuat ASLAP, dan pengingat food sample yang hampir lewat 48 jam. Semua ditangani dari satu panel.
 ''')}
 
-<h3>Bell Notifikasi</h3>
-{screen("/", "", shot_name="notifications")}
+<h3>Ikon Bell di Sidebar</h3>
+<!-- SHOT:notifications -->
+
+<p>Ikon bell 🔔 ada di area brand sidebar (paling atas, di sebelah label dapur). Di screenshot di atas, ikon bell tampak kuning — itu indikator bahwa ada notifikasi yang belum dibaca.</p>
 
 {steps([
-  ('Lihat ikon 🔔 di header kanan atas — angka merah menunjukkan notifikasi belum dibaca', ''),
-  ('Klik ikon bell untuk membuka panel notifikasi', ''),
+  ('Lihat ikon 🔔 di area brand sidebar kiri atas — warna kuning + badge angka = ada notifikasi belum dibaca', ''),
+  ('Klik ikon bell untuk membuka daftar notifikasi', ''),
   ('Klik salah satu notifikasi untuk langsung navigasi ke halaman yang relevan', ''),
-  ('Klik <strong>"Tandai semua terbaca"</strong> untuk membersihkan semua badge merah sekaligus', ''),
+  ('Klik <strong>"Tandai semua terbaca"</strong> untuk membersihkan semua badge sekaligus', ''),
 ])}
 
 <h3>Pengaturan Notifikasi</h3>
@@ -715,45 +679,9 @@ dan satu pengingat food sample yang hampir lewat 48 jam. Semua ditangani dari sa
 # BAB 4 — Build Menu Manual & Reverse Optimizer
 # ─────────────────────────────────────────────────────────────────────────────
 
-SCREEN_BUILD_MENU = screen("/menu-manual", """
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-  <div>
-    <div style="font-weight:700;font-size:0.85rem;margin-bottom:8px">🔍 Cari Bahan TKPI</div>
-    <div style="border:1px solid #D1D5DB;border-radius:6px;padding:8px;font-size:0.8rem;background:white">
-      <input style="width:100%;border:none;outline:none;font-size:0.82rem" placeholder="Ketik nama bahan... (mis: ayam)"/>
-    </div>
-    <div style="margin-top:8px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px">
-      <div style="font-size:0.78rem;font-weight:700;color:#1E40AF">Ayam Kampung (100g)</div>
-      <div style="font-size:0.72rem;color:#374151">Energi: 179 kkal · Protein: 18.2g · Fe: 1.5mg</div>
-      <div style="display:flex;gap:4px;margin-top:4px;align-items:center">
-        <span style="font-size:0.72rem">Porsi:</span>
-        <input style="width:50px;border:1px solid #D1D5DB;border-radius:4px;padding:2px 4px;font-size:0.75rem" value="150"/>
-        <span style="font-size:0.72rem">g</span>
-        <button style="background:#2563EB;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:0.72rem;cursor:pointer">+ Tambah</button>
-      </div>
-    </div>
-  </div>
-  <div>
-    <div style="font-weight:700;font-size:0.85rem;margin-bottom:8px">📊 Komposisi Menu</div>
-    <table style="width:100%;font-size:0.75rem;border-collapse:collapse">
-      <tr style="background:#F3F4F6"><td style="padding:4px 6px;font-weight:600">Bahan</td><td>Gram</td><td>Energi</td></tr>
-      <tr style="border-bottom:1px solid #F3F4F6"><td style="padding:4px 6px">Ayam Kampung</td><td>150g</td><td>269kkal</td></tr>
-      <tr style="border-bottom:1px solid #F3F4F6"><td style="padding:4px 6px">Nasi Putih</td><td>200g</td><td>260kkal</td></tr>
-      <tr style="border-bottom:1px solid #F3F4F6"><td style="padding:4px 6px">Sayur Bayam</td><td>100g</td><td>36kkal</td></tr>
-      <tr style="background:#D1FAE5"><td style="padding:4px 6px;font-weight:700">Total</td><td></td><td style="font-weight:700">565kkal</td></tr>
-    </table>
-    <div style="margin-top:8px;background:#FFFBEB;border:1px solid #FCD34D;border-radius:6px;padding:8px">
-      <div style="font-size:0.72rem;font-weight:700;color:#92400E">AKG vs Target (SD 7-9)</div>
-      <div style="margin-top:4px;background:#E5E7EB;border-radius:999px;height:8px">
-        <div style="background:#059669;border-radius:999px;height:8px;width:75%"></div>
-      </div>
-      <div style="font-size:0.7rem;color:#6B7280;margin-top:2px">Energi: 75% dari target 750 kkal/hari</div>
-    </div>
-  </div>
-</div>
-""")
+SCREEN_BUILD_MENU = screen("/menu-manual", "")
 
-BAB4 = chapter(4, "🥗", "Build Menu Manual & Reverse Optimizer", "H-1 | Sore", f"""
+BAB4 = chapter(4, "✎", "Build Menu Manual", "H-1 | Sore", f"""
 {roles('nutritionist','kepala')}
 
 {story('''
@@ -769,73 +697,30 @@ DPMBG hitung otomatis sambil dia input — tidak perlu buka Excel lagi.
 {steps([
   ('Login sebagai <strong>Ahli Gizi</strong> atau <strong>Kepala SPPG</strong>', ''),
   ('Sidebar → klik grup <strong>▼ MENU & GIZI</strong>', ''),
-  ('Klik <strong>Build Menu Manual</strong>', 'URL: /menu-manual'),
+  ('Klik item <strong>Build Manual</strong> (icon ✎)', 'URL: /menu-manual'),
 ])}
 
 <h3>Tampilan Build Menu Manual</h3>
 {SCREEN_BUILD_MENU}
 
+<p>Halaman menampilkan judul <strong>Build Menu Manual</strong> dengan subtitle
+<em>"Input menu manual (mis. dari permintaan siswa), lihat gizi & biaya real-time vs AKG."</em>.
+Layout 2 kolom: kiri = pencari bahan + daftar bahan dipilih; kanan = panel <strong>Analisis Gizi & Biaya</strong>.</p>
+
 <h3>Langkah Menyusun Menu</h3>
 {steps([
-  ('Di kolom <strong>Cari Bahan TKPI</strong>, ketik nama bahan (contoh: "ayam") — hasil muncul otomatis (typeahead)', ''),
-  ('Pilih bahan dari dropdown hasil pencarian', ''),
-  ('Isi <strong>Porsi (gram)</strong> yang akan digunakan per 1.000 porsi', ''),
-  ('Klik <strong>+ Tambah</strong> — bahan masuk ke tabel Komposisi Menu', ''),
-  ('Ulangi untuk semua bahan menu hari ini (nasi, lauk, sayur, buah, susu jika ada)', ''),
-  ('Pantau <strong>bar AKG</strong> di kanan — harus mencapai minimal 70% untuk setiap kelompok umur', ''),
-  ('Lihat <strong>Cost per Porsi</strong> di bawah tabel — harus di bawah Rp 15.000', ''),
-  ('Klik <strong>Simpan Draft</strong> jika belum selesai, atau <strong>Submit untuk Review</strong> jika sudah siap', ''),
+  ('Di kolom kiri, gunakan input <strong>"Cari bahan TKPI (nama atau kode)..."</strong> untuk mencari bahan', ''),
+  ('Pilih kategori bahan dari dropdown di sebelah kanan input pencarian (opsional filter)', ''),
+  ('Klik hasil yang muncul untuk menambahkan bahan ke daftar <strong>Bahan dipilih</strong>', 'Counter angka di label akan bertambah, mis. "Bahan dipilih (3)"'),
+  ('Untuk tiap bahan yang sudah masuk, isi gramase per porsi', ''),
+  ('Panel kanan <strong>Analisis Gizi & Biaya</strong> akan otomatis update real-time menampilkan total energi, protein, lemak, KH, biaya per porsi, dan % AKG vs target kelompok umur', ''),
+  ('Pantau % AKG — harus mencapai minimal 70% untuk setiap kelompok umur yang dilayani', ''),
+  ('Cost per porsi harus di bawah Rp 15.000', ''),
 ])}
 
-{feature_box('⚡', 'Reverse Optimizer — Bantu Susun Menu Otomatis', f"""
-  <p>Tidak tahu harus mulai dari mana? Pakai <strong>Reverse Optimizer</strong>!
-  Sistem akan mencari kombinasi bahan yang memenuhi target gizi dengan cost minimal
-  menggunakan algoritma <em>linear programming</em>.</p>
-  {steps([
-    ('Di halaman Build Menu Manual, klik tab <strong>Optimizer Otomatis</strong>', ''),
-    ('Set target: energi, protein, biaya maksimal per porsi', ''),
-    ('Klik <strong>Hitung Otomatis</strong> — sistem menjalankan optimizer PuLP', ''),
-    ('Review hasil rekomendasi bahan dan gramase yang disarankan', ''),
-    ('Klik <strong>Pakai Rekomendasi Ini</strong> untuk memasukkan ke form manual', ''),
-  ])}
-  {tip('Optimizer bekerja berdasarkan harga bahan terkini dari database — hasil selalu up-to-date.')}
-""")}
+{tip('Saat halaman pertama dibuka dengan menu kosong, daftar bahan menampilkan placeholder <em>"Belum ada bahan. Cari di atas."</em> dan panel analisis menampilkan <em>"Pilih bahan dulu."</em>')}
 
-{feature_box('🔄', 'Cek Siklus 20 Hari', f"""
-  <p>Menu MBG wajib memenuhi aturan rotasi: dalam 20 hari, bahan protein tertentu
-  tidak boleh muncul terlalu sering (contoh: ayam maksimal 8 kali dalam 20 hari).
-  DPMBG cek otomatis.</p>
-  {steps([
-    ('Di halaman Build Menu Manual, lihat panel <strong>Peringatan Siklus</strong>', ''),
-    ('Jika muncul warning kuning, berarti bahan sudah hampir melewati batas frekuensi', ''),
-    ('Jika warning merah, bahan sudah melebihi batas — wajib diganti sebelum submit', ''),
-  ])}
-  {data_table(
-    ['Bahan', 'Batas Maksimal (20 hari)'],
-    [
-      ['Telur', '≤ 8 kali'],
-      ['Ayam', '≤ 8 kali'],
-      ['Tahu', '≤ 10 kali'],
-      ['Tempe', '≤ 10 kali'],
-      ['Ikan', '≤ 8 kali'],
-      ['Daging Sapi', '≤ 4 kali'],
-    ]
-  )}
-""")}
-
-{warn('Menu yang melanggar siklus tidak bisa disubmit untuk review. Perbaiki bahan terlebih dahulu.')}
-
-<h3>Forecast Kebutuhan Bahan</h3>
-{steps([
-  ('Sidebar → grup <strong>▼ MENU & GIZI</strong> → klik <strong>Build Menu Manual</strong>', ''),
-  ('Klik tab <strong>Forecast</strong> di bagian atas halaman', ''),
-  ('Pilih <strong>Dari tanggal</strong> dan <strong>Sampai tanggal</strong>', ''),
-  ('Klik <strong>Hitung Forecast</strong> — sistem kalkulasi kebutuhan bahan × jumlah siswa × hari', ''),
-  ('Lihat hasil: total gram per bahan, total biaya estimasi per periode', ''),
-  ('Klik <strong>Export Excel</strong> untuk unduh laporan forecast', ''),
-])}
-
-{tip('Forecast sangat berguna untuk Akuntan (Akuntan) dalam membuat Purchase Order mingguan.')}
+{info('Untuk fitur Reverse Optimizer otomatis (kombinasi bahan dengan cost minimal & gizi maksimal), Sikus 20 hari, dan Forecast Kebutuhan Bahan — gunakan halaman <strong>Menu Planner</strong> atau <strong>Approval Menu</strong> (lihat Bab 5). Halaman Build Manual fokus pada input cepat 1 menu untuk skenario ad-hoc (permintaan siswa, diet khusus).')}
 """)
 
 
@@ -853,51 +738,58 @@ Kepala SPPG buka DPMBG, cek komposisi gizi dan siklus 20 hari, lalu klik <strong
 Status menu berubah ke <em>Approved</em> — Kepala Chef bisa mulai produksi besok subuh berdasarkan menu ini.
 ''')}
 
-<h3>Alur Status Menu</h3>
+<h3>Halaman Approval Menu</h3>
 <!-- SHOT:menu_approval -->
 
+<p>Judul halaman <strong>Approval Menu</strong> dengan subtitle
+<em>"Alur: Draft → Nunggu Review → Disetujui → Terkunci. Cycle 20 hari & forecast bahan ada di bawah."</em>.
+Di atas ada 7 tab filter status, dan di bawah ada panel <strong>Forecast Bahan dari Menu Approved</strong>.</p>
+
+<h3>Tab Status (urut kiri ke kanan)</h3>
 {data_table(
-  ['Status', 'Artinya', 'Siapa yang Bisa Ubah'],
+  ['Tab', 'Status', 'Artinya', 'Siapa yang Bisa Ubah'],
   [
-    [badge('Draft','gray'), 'Menu sedang disusun', 'Ahli Gizi'],
-    [badge('Pending Review','amber'), 'Menunggu persetujuan Kepala SPPG', 'Ahli Gizi (submit), Kepala SPPG (review)'],
-    [badge('Approved','green'), 'Disetujui, siap dieksekusi', 'Kepala SPPG'],
-    [badge('Locked','blue'), 'Dikunci, tidak bisa diubah', 'Kepala SPPG'],
-    [badge('Archived','gray'), 'Arsip historis', 'Kepala SPPG'],
+    [badge('Nunggu Review','amber'), 'Pending review (default tab aktif)', 'Menunggu approval Kepala SPPG', 'Ahli Gizi (submit) → Kepala SPPG (review)'],
+    [badge('Draft','gray'), 'Draft', 'Menu sedang disusun, belum disubmit', 'Ahli Gizi'],
+    [badge('Disetujui','green'), 'Approved', 'Sudah di-approve, siap dieksekusi', 'Kepala SPPG'],
+    [badge('Terkunci','blue'), 'Locked', 'Dikunci, tidak bisa diubah lagi', 'Kepala SPPG'],
+    [badge('Ditolak','red'), 'Rejected', 'Di-reject, harus revisi', 'Kepala SPPG (action) → Ahli Gizi (perbaiki)'],
+    [badge('Arsip','gray'), 'Archived', 'Arsip historis', 'Kepala SPPG'],
+    [badge('Semua','gray'), 'Semua', 'Lihat semua status sekaligus', '—'],
   ]
 )}
 
 <h3>Submit Menu untuk Review (Ahli Gizi)</h3>
 {steps([
-  ('Selesaikan komposisi menu di Build Menu Manual', 'Sidebar → ▼ MENU & GIZI → Build Menu Manual'),
-  ('Pastikan tidak ada warning merah di panel Siklus', ''),
+  ('Selesaikan komposisi menu di Build Manual atau Menu Planner', 'Sidebar → ▼ MENU & GIZI → Build Manual / Menu Planner'),
+  ('Pastikan komposisi gizi memenuhi AKG dan cost di bawah Rp 15.000/porsi', ''),
   ('Klik tombol <strong>Submit untuk Review</strong>', ''),
   ('Tulis catatan opsional untuk Kepala SPPG', ''),
-  ('Klik <strong>Konfirmasi Submit</strong> — status berubah ke Pending Review', ''),
+  ('Klik <strong>Konfirmasi Submit</strong> — status menu pindah ke tab <strong>Nunggu Review</strong>', ''),
 ])}
 
 <h3>Menyetujui Menu (Kepala SPPG)</h3>
 {steps([
-  ('Buka notifikasi bell atau langsung ke halaman Approval', 'Sidebar → ▼ MENU & GIZI → Menu Approval'),
-  ('Pilih filter <strong>Pending Review</strong> untuk melihat menu yang menunggu', ''),
+  ('Buka notifikasi bell atau langsung ke halaman approval', 'Sidebar → ▼ MENU & GIZI → Approval Menu'),
+  ('Pastikan tab <strong>Nunggu Review</strong> aktif (default sudah aktif)', ''),
   ('Klik menu yang ingin di-review — detail komposisi gizi muncul', ''),
   ('Review AKG per kelompok umur, cek siklus 20 hari, lihat cost per porsi', ''),
-  ('Klik <strong>Setujui</strong> (approve) atau <strong>Kembalikan</strong> (reject) dengan catatan alasan', ''),
-  ('Jika approve → status menu berubah ke Approved + notifikasi ke Ahli Gizi', ''),
+  ('Klik <strong>Disetujui</strong> (approve) atau <strong>Ditolak</strong> dengan catatan alasan', ''),
+  ('Jika approve → menu pindah ke tab <strong>Disetujui</strong> + notifikasi ke Ahli Gizi', ''),
 ])}
 
 {tip('Kepala SPPG bisa langsung klik link dari notifikasi bell untuk langsung ke halaman approval menu yang bersangkutan.')}
 
-<h3>Permintaan Khusus Siswa</h3>
+<h3>Forecast Bahan dari Menu Approved</h3>
+<p>Panel di bawah daftar menu memungkinkan menghitung total kebutuhan bahan untuk semua menu yang sudah <strong>Disetujui</strong> dalam rentang tanggal tertentu — output siap dikonversi jadi Purchase Order (lihat Bab 6).</p>
 {steps([
-  ('Sidebar → ▼ MENU & GIZI → klik <strong>Permintaan Siswa</strong>', 'URL: /student-requests'),
-  ('Klik <strong>+ Permintaan Baru</strong>', ''),
-  ('Isi sekolah, kelas, keterangan alergi atau kebutuhan khusus', ''),
-  ('Klik <strong>Simpan</strong>', ''),
-  ('Untuk menyelesaikan permintaan: klik item → klik <strong>Tandai Selesai</strong> dengan catatan tindakan', ''),
+  ('Scroll ke bawah daftar menu, temukan panel <strong>Forecast Bahan dari Menu Approved</strong>', ''),
+  ('Isi tanggal <strong>Dari</strong> dan <strong>Sampai</strong> (default 7 hari ke depan)', ''),
+  ('Klik tombol biru <strong>Hitung</strong>', ''),
+  ('Sistem agregasi: total gram per bahan × jumlah siswa × hari', ''),
 ])}
 
-{info('Permintaan siswa (alergi, kebutuhan diet khusus) dicatat agar Ahli Gizi dan Kepala Chef bisa menyesuaikan menu atau porsi tertentu.')}
+{info('Forecast ini langsung dipakai modul Akuntan untuk meng-generate PO (lihat tab PO Generator di halaman Akuntan Finance).')}
 """)
 
 
@@ -905,28 +797,7 @@ Status menu berubah ke <em>Approved</em> — Kepala Chef bisa mulai produksi bes
 # BAB 6 — Purchase Orders & Supplier
 # ─────────────────────────────────────────────────────────────────────────────
 
-SCREEN_PO = screen("/purchase-orders", """
-<div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
-  <div style="font-weight:700;font-size:0.9rem">Purchase Orders</div>
-  <button style="background:#2563EB;color:white;border:none;border-radius:6px;padding:6px 14px;font-size:0.8rem">+ Buat PO</button>
-</div>
-<table style="width:100%;font-size:0.78rem;border-collapse:collapse">
-  <tr style="background:#F3F4F6">
-    <th style="padding:6px 8px;text-align:left">No. PO</th>
-    <th>Supplier</th><th>Tgl Order</th><th>Total</th><th>Status</th>
-  </tr>
-  <tr style="border-bottom:1px solid #F3F4F6">
-    <td style="padding:6px 8px;font-family:monospace;font-size:0.72rem">PO-20260501-001</td>
-    <td>UD Sumber Tani</td><td>01 Mei 2026</td><td>Rp 4.250.000</td>
-    <td><span style="background:#D1FAE5;color:#065F46;border-radius:999px;padding:2px 8px;font-size:0.7rem;font-weight:600">Diterima</span></td>
-  </tr>
-  <tr style="border-bottom:1px solid #F3F4F6;background:#F9FAFB">
-    <td style="padding:6px 8px;font-family:monospace;font-size:0.72rem">PO-20260501-002</td>
-    <td>CV Berkah Jaya</td><td>01 Mei 2026</td><td>Rp 1.800.000</td>
-    <td><span style="background:#FEF3C7;color:#92400E;border-radius:999px;padding:2px 8px;font-size:0.7rem;font-weight:600">Pending</span></td>
-  </tr>
-</table>
-""")
+SCREEN_PO = screen("/purchase-orders", "")
 
 BAB6 = chapter(6, "📦", "Purchase Order & Manajemen Supplier", "H-1 | Siang", f"""
 {roles('accountant','kepala')}
@@ -935,42 +806,60 @@ BAB6 = chapter(6, "📦", "Purchase Order & Manajemen Supplier", "H-1 | Siang", 
 <strong>H-1, pukul 13:00.</strong> Akuntan membuka halaman Purchase Orders. Supplier harus tahu pesanan
 paling lambat sore ini supaya bisa siapkan barang untuk pengiriman subuh besok jam 04:00.
 Berdasarkan forecast dari menu yang sudah diapprove, dia perlu memesan ayam kampung 50 kg
-dan bayam 30 kg dari UD Sumber Tani. Klik <em>Buat PO</em>, pilih supplier, tambah item —
+dan bayam 30 kg dari UD Sumber Tani. Klik tombol biru <em>+ PO Baru</em>, pilih supplier, tambah item —
 dalam 5 menit PO tersimpan dan supplier bisa dihubungi untuk konfirmasi.
 ''')}
 
-<h3>Daftar Purchase Orders</h3>
+<h3>Halaman Purchase Orders</h3>
 {SCREEN_PO}
+
+<p>Judul halaman <strong>Purchase Orders</strong> dengan subtitle
+<em>"Akuntan generate PO dari forecast menu approved."</em>. Tombol biru <strong>+ PO Baru</strong> di kanan atas.
+Di bawah ada 7 tab filter: <code>Semua</code> (default aktif) · <code>draft</code> · <code>sent</code> · <code>partial</code> · <code>received</code> · <code>closed</code> · <code>cancelled</code>.</p>
 
 <h3>Membuat Purchase Order Baru</h3>
 {steps([
-  ('Sidebar → klik grup <strong>▼ PENERIMAAN</strong>', ''),
-  ('Klik <strong>Purchase Orders</strong>', 'URL: /purchase-orders'),
-  ('Klik tombol <strong>+ Buat PO</strong>', ''),
-  ('Pilih <strong>Supplier</strong> dari dropdown (berdasarkan master data supplier)', ''),
-  ('Isi <strong>Tanggal Order</strong> dan <strong>Tanggal Diharapkan Tiba</strong>', ''),
-  ('Klik <strong>+ Tambah Item</strong> — pilih bahan, isi kuantitas dan satuan', ''),
+  ('Sidebar → klik grup <strong>▼ PENERIMAAN BAHAN</strong>', ''),
+  ('Klik item <strong>Purchase Orders</strong> (icon 📋)', 'URL: /purchase-orders'),
+  ('Klik tombol biru <strong>+ PO Baru</strong> di kanan atas', ''),
+  ('Pilih <strong>Supplier</strong> dari dropdown (berdasarkan Master Supplier)', ''),
+  ('Isi tanggal order dan tanggal kedatangan yang diharapkan', ''),
+  ('Tambahkan item: pilih bahan, isi kuantitas dan satuan', ''),
   ('Ulangi untuk semua bahan yang dipesan', ''),
-  ('Klik <strong>Simpan PO</strong> — nomor PO otomatis digenerate (PO-YYYYMMDD-XXX)', ''),
+  ('Submit — nomor PO otomatis digenerate, status awal = <code>draft</code>', ''),
+  ('Klik action <strong>Send</strong> untuk pindahkan status ke <code>sent</code> (PO terkirim ke supplier)', ''),
 ])}
 
-{feature_box('⚡', 'Auto-Generate PO dari Forecast', f"""
-  <p>Tidak perlu input manual jika sudah punya forecast! Sistem bisa generate PO otomatis.</p>
+<h3>Lifecycle Status PO</h3>
+{data_table(
+  ['Status', 'Artinya', 'Action Selanjutnya'],
+  [
+    ['draft', 'PO baru dibuat, belum dikirim', 'Akuntan: kirim ke supplier'],
+    ['sent', 'PO sudah dikirim ke supplier, menunggu kedatangan', 'ASLAP: tunggu truk datang → buka Joint Inspection'],
+    ['partial', 'Bahan datang sebagian (split delivery)', 'Lanjut tunggu sisa atau close manual'],
+    ['received', 'Semua bahan sudah masuk + lulus inspeksi', 'Auto-update dari Joint Inspection'],
+    ['closed', 'PO selesai (final)', '—'],
+    ['cancelled', 'PO dibatalkan sebelum supplier kirim', '—'],
+  ]
+)}
+
+{feature_box('⚡', 'Auto-Generate PO dari Forecast Menu', f"""
+  <p>Tidak perlu input manual jika sudah punya forecast! Modul Akuntan punya generator PO otomatis.</p>
   {steps([
-    ('Sidebar → ▼ PENERIMAAN → Purchase Orders', ''),
-    ('Klik <strong>Generate dari Forecast</strong>', ''),
-    ('Pilih periode forecast dan supplier untuk masing-masing bahan', ''),
+    ('Sidebar → ▼ KEUANGAN → <strong>Akuntan Finance</strong>', ''),
+    ('Klik tab <strong>PO Generator</strong>', ''),
+    ('Pilih periode forecast (yang sudah dihitung di Approval Menu) dan supplier untuk masing-masing bahan', ''),
     ('Review quantities yang disarankan sistem', ''),
-    ('Klik <strong>Buat PO Otomatis</strong>', ''),
+    ('Klik <strong>Generate</strong> — PO otomatis dibuat dengan status <code>draft</code>', ''),
   ])}
 """)}
 
-<h3>Tren Harga & Alert Spike</h3>
+<h3>Price Trends & Spike Alerts</h3>
 {steps([
-  ('Sidebar → ▼ PENERIMAAN → klik <strong>Tren Harga</strong>', 'URL: /finance (tab Tren Harga)'),
+  ('Sidebar → ▼ KEUANGAN → klik <strong>Akuntan Finance</strong>', 'URL: /finance'),
+  ('Klik tab <strong>Price Trends</strong>', ''),
   ('Pilih bahan dari dropdown untuk melihat grafik harga 30/60/90 hari terakhir', ''),
-  ('Cek kolom <strong>WoW%</strong> (Week-over-Week change) — perubahan harga minggu ini vs minggu lalu', ''),
-  ('Alert merah muncul otomatis jika kenaikan harga ≥15%', ''),
+  ('Klik tab <strong>Spike Alerts</strong> untuk lihat daftar bahan yang naik ≥15% minggu ini', ''),
 ])}
 
 {warn('Jika ada spike alert merah pada bahan utama, laporkan ke Kepala SPPG sebelum membuat PO baru — mungkin perlu cari supplier alternatif.')}
@@ -978,10 +867,10 @@ dalam 5 menit PO tersimpan dan supplier bisa dihubungi untuk konfirmasi.
 <h3>Manajemen Supplier</h3>
 {steps([
   ('Sidebar → ▼ MASTER DATA → klik <strong>Supplier</strong>', 'URL: /admin/suppliers'),
-  ('Lihat daftar semua supplier aktif beserta rating mereka', ''),
-  ('Klik <strong>+ Tambah Supplier</strong> untuk mendaftarkan supplier baru', ''),
-  ('Isi nama, kontak, alamat, dan kategori bahan yang disuplai', ''),
-  ('Rating supplier otomatis turun setiap kali bahan dari supplier tersebut <strong>ditolak</strong> saat inspeksi', ''),
+  ('Halaman <strong>Master Supplier</strong> menampilkan daftar semua supplier aktif', ''),
+  ('Klik tombol biru <strong>+ Tambah Supplier</strong> di kanan atas untuk mendaftarkan supplier baru', ''),
+  ('Centang checkbox <strong>Tampilkan non-aktif</strong> di samping tombol kalau mau lihat supplier yang sudah dinonaktifkan', ''),
+  ('Isi nama, kontak, kategori bahan, rating awal, NPWP, rekening', ''),
 ])}
 
 {data_table(
@@ -989,9 +878,9 @@ dalam 5 menit PO tersimpan dan supplier bisa dihubungi untuk konfirmasi.
   [
     ['Nama', 'Nama resmi usaha supplier'],
     ['Kontak', 'No. HP atau email PIC supplier'],
-    ['Kategori', 'Jenis bahan yang biasa disuplai'],
-    ['Rating', 'Score 1-5 berbasis histori penerimaan (auto-update)'],
-    ['Default Item', 'Bahan-bahan yang biasanya dipesan dari supplier ini'],
+    ['Kategori', 'Jenis bahan yang biasa disuplai (bahan_pokok, sayuran, ayam, ikan)'],
+    ['Rating', 'Score 1-5 berbasis histori penerimaan'],
+    ['NPWP / Rekening', 'Untuk pencairan invoice'],
   ]
 )}
 """)
@@ -1034,7 +923,7 @@ SVG_INSPECTION_FLOW = """<svg viewBox="0 0 640 130" xmlns="http://www.w3.org/200
   <line x1="470" y1="65" x2="488" y2="65" stroke="#94A3B8" stroke-width="2" marker-end="url(#arr2)"/>
 </svg>"""
 
-BAB7 = chapter(7, "🔍", "Inspeksi Bersama — 3 Tanda Tangan Digital", "04:00", f"""
+BAB7 = chapter(7, "🤝", "Joint Inspection — 3 Tanda Tangan Digital", "04:00", f"""
 {roles('aslap','nutritionist','accountant','kepala')}
 
 {story('''
@@ -1046,16 +935,21 @@ Tiga tanda tangan, semua digital, semua timestamped. Dalam 45 menit bahan sudah 
 Kepala Chef bisa mulai masak jam 05:30.
 ''')}
 
-<h3>Alur Inspeksi Bersama</h3>
+<h3>Halaman Joint Inspection</h3>
 <!-- SHOT:inspections -->
 
-<h3>Langkah 1: Buat Inspeksi Baru (ASLAP)</h3>
+<p>Judul halaman <strong>Joint Inspection</strong> dengan subtitle
+<em>"3-orang sign-off saat bahan datang dari supplier (BGN compliance)."</em>.
+Tombol biru <strong>+ Mulai Inspeksi</strong> di kanan atas. Di bawah ada 6 tab filter:
+<code>inspecting</code> (default aktif) · <code>pending</code> · <code>accepted</code> · <code>partial</code> · <code>rejected</code> · <code>Semua</code>.</p>
+
+<h3>Langkah 1: Mulai Inspeksi (ASLAP)</h3>
 {steps([
-  ('Sidebar → klik grup <strong>▼ PENERIMAAN</strong> → klik <strong>Inspeksi Bersama</strong>', 'URL: /inspections'),
-  ('Klik <strong>+ Inspeksi Baru</strong>', ''),
-  ('Pilih <strong>Purchase Order</strong> terkait dari dropdown', ''),
+  ('Sidebar → klik grup <strong>▼ PENERIMAAN BAHAN</strong> → klik <strong>Joint Inspection</strong>', 'URL: /inspections'),
+  ('Klik tombol biru <strong>+ Mulai Inspeksi</strong> di kanan atas', ''),
+  ('Pilih <strong>Purchase Order</strong> terkait dari dropdown (PO dengan status <code>sent</code>)', ''),
   ('Isi tanggal dan waktu kedatangan supplier', ''),
-  ('Klik <strong>Buat Inspeksi</strong> — nomor inspeksi otomatis (INS-YYYYMMDD-XXX)', ''),
+  ('Submit — inspeksi baru muncul di tab <code>inspecting</code> (sedang berjalan)', ''),
 ])}
 
 <h3>Langkah 2: Input Item per Container</h3>
@@ -1104,7 +998,7 @@ Kepala Chef bisa mulai masak jam 05:30.
 # BAB 8 — Produksi Batch & QR Scan
 # ─────────────────────────────────────────────────────────────────────────────
 
-BAB8 = chapter(8, "🍳", "Produksi Batch & QR Scan Tablet", "05:30", f"""
+BAB8 = chapter(8, "🍳", "Production — Tablet Kepala Chef", "05:30", f"""
 {roles('chef','kepala','nutritionist')}
 
 {story('''
@@ -1116,13 +1010,24 @@ gudang di-scan barcodenya. Sistem otomatis catat pemakaian dan kurangi stok deng
 container paling lama masuk, paling pertama terpakai.
 ''')}
 
+<h3>Halaman Production</h3>
+<!-- SHOT:production -->
+
+<p>Judul halaman <strong>Production — Tablet Kepala Chef</strong> dengan subtitle
+<em>"Mulai batch dari menu approved. FIFO auto-debit. Timer 6 jam SOP BGN."</em>.
+Halaman dirancang untuk tablet di dinding dapur (touch-friendly). Tiga panel utama:</p>
+<ul>
+  <li><strong>Menu Approved Hari Ini</strong> — daftar menu yang sudah di-approve, klik untuk mulai batch</li>
+  <li><strong>Batch Aktif</strong> — batch yang sedang berjalan dengan countdown timer 6 jam (kosong: <em>"Belum ada batch."</em>)</li>
+  <li><strong>Tablet Scan — Step Processing (JWT auth)</strong> — tombol biru <strong>📷 Scan</strong> untuk buka kamera</li>
+</ul>
+
 <h3>Memulai Batch Produksi</h3>
 {steps([
-  ('Sidebar → klik grup <strong>▼ OPERASI DAPUR</strong> → klik <strong>Produksi Batch</strong>', 'URL: /production'),
-  ('Klik <strong>+ Batch Baru</strong>', ''),
-  ('Pilih <strong>Menu</strong> yang sudah Approved untuk hari ini', ''),
+  ('Sidebar → klik grup <strong>▼ PRODUKSI & DISTRIBUSI</strong> → klik <strong>Production</strong>', 'URL: /production'),
+  ('Di panel <strong>Menu Approved Hari Ini</strong>, klik menu yang akan dimasak', ''),
   ('Isi <strong>Target Porsi</strong> untuk batch ini', ''),
-  ('Klik <strong>Mulai Batch</strong> — timer otomatis berjalan', ''),
+  ('Submit — batch muncul di panel <strong>Batch Aktif</strong> dengan timer 6 jam mulai berjalan', ''),
 ])}
 
 {feature_box('📱', 'QR Scan Container — Debit Stok FIFO', f"""
@@ -1169,7 +1074,7 @@ container paling lama masuk, paling pertama terpakai.
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# BAB 9 — Distribusi Makanan ke Sekolah
+# BAB 9 — Distribusi ke Sekolah (Wave 1 & 2)
 # ─────────────────────────────────────────────────────────────────────────────
 
 SVG_WAVE = """<svg viewBox="0 0 560 120" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;font-family:Inter,sans-serif">
@@ -1186,56 +1091,58 @@ SVG_WAVE = """<svg viewBox="0 0 560 120" xmlns="http://www.w3.org/2000/svg" styl
   <text x="425" y="85" text-anchor="middle" fill="#D97706" font-size="9" font-weight="600">✓ Setelah gelombang 1 selesai</text>
 </svg>"""
 
-BAB9 = chapter(9, "🚚", "Distribusi Makanan ke Sekolah", "08:00 / 10:00", f"""
+BAB9 = chapter(9, "🚐", "Distribusi ke Sekolah (Wave 1 & 2)", "08:00 / 10:00", f"""
 {roles('aslap','kepala')}
 
 {story('''
 <strong>08:00 pagi.</strong> Produksi selesai jam 07:30 dan makanan sudah dikemas. ASLAP di parkiran
-dengan dua truk siap jalan untuk Gelombang 1: PAUD, TK, dan SD kelas 1-3 — sekolah yang
-makan lebih pagi. Dia buka DPMBG, input jumlah per sekolah, klik <em>Dispatch</em>, dan truk jalan.
-Jam 10:00 Gelombang 2 jalan untuk SD kelas 4-6 dan SMP. Sejam setelah dispatch,
-notifikasi konfirmasi mulai masuk satu per satu dari guru di setiap sekolah — semua tercatat otomatis.
+dengan dua truk siap jalan untuk Wave 1: PAUD, TK, dan SD — sekolah yang makan lebih pagi.
+Dia buka DPMBG, klik tab Wave 1 & 2, input jumlah per sekolah, klik <em>Dispatch</em>, dan truk jalan.
+Jam 10:00 Wave 2 jalan untuk SMP. Sejam setelah dispatch, notifikasi konfirmasi mulai masuk
+satu per satu dari guru di setiap sekolah — semua tercatat otomatis.
 ''')}
 
-<h3>Sistem Gelombang (Wave Classifier)</h3>
+<h3>Halaman Distribusi</h3>
 <!-- SHOT:distributions -->
+
+<p>Judul halaman <strong>Distribusi Hari Ini</strong> dengan subtitle
+<em>"Aggregate per sekolah · 2-wave classifier · receipt tracking · sisa porsi."</em>.
+Empat tab di atas: <code>Aggregate Hari Ini</code> (default aktif) · <code>Wave 1 & 2</code> · <code>Sisa Porsi</code> · <code>Vehicle & Driver</code>.</p>
 
 <h3>Mendispatch Pengiriman</h3>
 {steps([
-  ('Sidebar → klik grup <strong>▼ DISTRIBUSI</strong> → klik <strong>Distribusi Makanan</strong>', 'URL: /distributions'),
-  ('Pilih tab <strong>Gelombang 1</strong> atau <strong>Gelombang 2</strong> sesuai jadwal', ''),
-  ('Lihat daftar sekolah dan target porsi untuk masing-masing sekolah', ''),
-  ('Isi <strong>Jumlah Dikirim</strong> untuk setiap sekolah', ''),
-  ('Pilih <strong>Driver</strong> dan <strong>Kendaraan</strong> dari dropdown', ''),
-  ('Klik <strong>Dispatch Gelombang</strong> — status semua sekolah dalam gelombang berubah ke "Dikirim"', ''),
+  ('Sidebar → klik grup <strong>▼ PRODUKSI & DISTRIBUSI</strong> → klik <strong>Distribusi</strong>', 'URL: /distributions'),
+  ('Klik tab <strong>Wave 1 & 2</strong> untuk lihat daftar pengiriman per gelombang', ''),
+  ('Wave classifier otomatis pilihkan sekolah: PAUD/TK/SD = Wave 1, SMP = Wave 2', ''),
+  ('Untuk tiap sekolah: isi jumlah porsi dikirim, pilih driver + vehicle dari tab Vehicle & Driver', ''),
+  ('Klik <strong>Dispatch</strong> per item atau dispatch seluruh gelombang sekaligus', ''),
 ])}
 
 <h3>Konfirmasi Terima oleh Guru Sekolah (Tanpa Login)</h3>
 {steps([
-  ('Guru menerima link konfirmasi (dikirim via WhatsApp atau scan QR di DPMBG)', ''),
-  ('Guru buka link di HP — <strong>tidak perlu login</strong>', 'URL: /confirm/<token>'),
+  ('Guru menerima link konfirmasi (dikirim via WhatsApp atau scan QR yang dicetak di label kontainer)', ''),
+  ('Guru buka link di HP — <strong>tidak perlu login</strong>', 'URL publik: /confirm/<token>'),
   ('Halaman menampilkan: nama sekolah, tanggal, jumlah porsi yang dikirim', ''),
   ('Guru isi <strong>Jumlah Diterima Aktual</strong> dan klik <strong>Konfirmasi Terima</strong>', ''),
   ('Jika ada sisa: isi <strong>Sisa Makanan</strong> yang tidak terdistribusi ke siswa', ''),
-  ('Klik <strong>Submit Konfirmasi</strong> — tercatat dengan timestamp', ''),
+  ('Submit — tercatat dengan timestamp', ''),
 ])}
 
 {tip('Guru tidak perlu punya akun DPMBG. Link konfirmasi adalah halaman publik yang hanya bisa diakses sekali per pengiriman.')}
 
-<h3>Dashboard Agregat Distribusi</h3>
+<h3>Tab Aggregate Hari Ini</h3>
 {steps([
-  ('Di halaman Distribusi, scroll ke bawah untuk melihat <strong>Rekap Hari Ini</strong>', ''),
-  ('Lihat per-sekolah: target porsi / dikirim / dikonfirmasi / sisa', ''),
-  ('Sekolah yang belum konfirmasi tampil dengan status <strong>Menunggu</strong> (kuning)', ''),
-  ('Sekolah yang sudah konfirmasi tampil <strong>Terkonfirmasi</strong> (hijau)', ''),
+  ('Klik tab <strong>Aggregate Hari Ini</strong> (default tab aktif)', ''),
+  ('Lihat ringkasan per-sekolah: target porsi · dikirim · dikonfirmasi · sisa', ''),
+  ('Status sekolah otomatis berubah: <span style="color:#D97706">Menunggu</span> (kuning) → <span style="color:#059669">Terkonfirmasi</span> (hijau) saat guru klik konfirmasi', ''),
 ])}
 
-<h3>Input Sisa Makanan (Leftover)</h3>
+<h3>Tab Sisa Porsi</h3>
 {steps([
   ('Saat kembali dari pengiriman, ASLAP input sisa makanan yang dibawa kembali', ''),
-  ('Sidebar → ▼ DISTRIBUSI → klik <strong>Sisa Makanan</strong>', ''),
-  ('Isi jumlah sisa per kategori, alasan (over-estimate / siswa absen / dll)', ''),
-  ('Klik <strong>Simpan</strong> — data leftover tersimpan untuk analisis efisiensi', ''),
+  ('Klik tab <strong>Sisa Porsi</strong>', ''),
+  ('Isi jumlah sisa per sekolah, alasan (over-estimate / siswa absen / dll)', ''),
+  ('Submit — data leftover tersimpan untuk analisis efisiensi & laporan BGN', ''),
 ])}
 
 {data_table(
@@ -1255,27 +1162,32 @@ notifikasi konfirmasi mulai masuk satu per satu dari guru di setiap sekolah — 
 # BAB 10 — ASLAP
 # ─────────────────────────────────────────────────────────────────────────────
 
-BAB10 = chapter(10, "🦺", "Pengawasan Lapangan — ASLAP", "06:00", f"""
+BAB10 = chapter(10, "📝", "ASLAP — Operasi Harian", "06:00", f"""
 {roles('aslap','kepala')}
 
 {story('''
 <strong>06:00 pagi.</strong> Inspeksi bahan selesai, Kepala Chef sudah mulai masak. ASLAP sekarang
 punya 20 menit untuk checklist harian sebelum sibuk persiapan pengiriman. Dia buka tab
-<em>Dasbor ASLAP</em> di DPMBG — checklist kebersihan, suhu kompor, cuci tangan, kondisi
+<em>ASLAP Daily</em> di DPMBG — checklist kebersihan, suhu kompor, cuci tangan, kondisi
 sampah, dan test kualitas air. Semua diisi dengan foto sebagai bukti.
 Siang harinya dia isi observasi produksi dan logbook komunikasi sekolah.
 Laporan mingguan akan di-generate hari Jumat.
 ''')}
 
-<h3>Membuka Dasbor ASLAP</h3>
+<h3>Membuka ASLAP Daily</h3>
+<!-- SHOT:aslap -->
+
+<p>Judul halaman <strong>ASLAP — Operasi Harian</strong> dengan subtitle
+<em>"Daily checklist · water quality · production observation · komunikasi sekolah · weekly report"</em>.
+5 tab di atas: <code>Checklist Hari Ini</code> (default aktif) · <code>Water Quality</code> · <code>Production Obs</code> · <code>Komunikasi Sekolah</code> · <code>Weekly Report</code>.</p>
+
 {steps([
-  ('Sidebar → klik grup <strong>▼ LAPANGAN (ASLAP)</strong> → klik <strong>Dasbor ASLAP</strong>', 'URL: /aslap'),
-  ('Dashboard menampilkan 5 tab: Checklist, Kualitas Air, Observasi Produksi, Log Komunikasi, Laporan Mingguan', ''),
+  ('Sidebar → klik grup <strong>▼ LAPANGAN & MONITORING</strong> → klik <strong>ASLAP Daily</strong> (icon 📝)', 'URL: /aslap'),
 ])}
 
-{feature_box('✅', 'Checklist Harian', f"""
+{feature_box('✅', 'Checklist Hari Ini', f"""
   {steps([
-    ('Klik tab <strong>Checklist</strong>', ''),
+    ('Klik tab <strong>Checklist Hari Ini</strong> (default tab aktif)', ''),
     ('Checklist hari ini sudah terisi template standar (bisa dikustomisasi Kepala SPPG)', ''),
     ('Centang setiap item yang sudah dipenuhi — ada keterangan wajib untuk item yang tidak centang', ''),
     ('Klik <strong>Simpan Checklist</strong> — timestamp otomatis tercatat', ''),
@@ -1292,9 +1204,9 @@ Laporan mingguan akan di-generate hari Jumat.
   )}
 """)}
 
-{feature_box('💧', 'Kualitas Air', f"""
+{feature_box('💧', 'Water Quality', f"""
   {steps([
-    ('Klik tab <strong>Kualitas Air</strong>', ''),
+    ('Klik tab <strong>Water Quality</strong>', ''),
     ('Klik <strong>+ Catat Pengukuran</strong>', ''),
     ('Isi nilai <strong>TDS</strong> (Total Dissolved Solids, satuan ppm) dan <strong>pH</strong>', ''),
     ('Sistem otomatis evaluasi: TDS harus <500 ppm, pH harus 6.5–8.5', ''),
@@ -1304,26 +1216,26 @@ Laporan mingguan akan di-generate hari Jumat.
   {warn('TDS > 500 ppm atau pH di luar 6.5–8.5 = air tidak layak masak. Hentikan penggunaan dan laporkan segera ke Kepala SPPG.')}
 """)}
 
-{feature_box('👁️', 'Observasi Produksi & Log Komunikasi Sekolah', f"""
-  <p><strong>Observasi Produksi:</strong> Catat temuan penting selama proses produksi berlangsung
+{feature_box('👁️', 'Production Obs & Komunikasi Sekolah', f"""
+  <p><strong>Production Obs:</strong> Catat temuan penting selama proses produksi berlangsung
   (contoh: temperature kontrol tidak terpenuhi, bahan terlihat kurang segar, dll).</p>
   {steps([
-    ('Klik tab <strong>Observasi Produksi</strong> → <strong>+ Observasi Baru</strong>', ''),
+    ('Klik tab <strong>Production Obs</strong> → <strong>+ Observasi Baru</strong>', ''),
     ('Isi kategori (Higienitas/Suhu/Bahan/Proses), deskripsi, dan tingkat urgensi', ''),
-    ('Klik <strong>Simpan</strong>', ''),
+    ('Simpan', ''),
   ])}
-  <p style="margin-top:12px"><strong>Log Komunikasi Sekolah:</strong> Catat setiap komunikasi dengan pihak sekolah
+  <p style="margin-top:12px"><strong>Komunikasi Sekolah:</strong> Catat setiap komunikasi dengan pihak sekolah
   yang berkaitan dengan distribusi atau keluhan.</p>
   {steps([
-    ('Klik tab <strong>Log Komunikasi</strong> → <strong>+ Log Baru</strong>', ''),
+    ('Klik tab <strong>Komunikasi Sekolah</strong> → <strong>+ Log Baru</strong>', ''),
     ('Pilih sekolah, metode komunikasi (telepon/WA/tatap muka), dan ringkasan isi komunikasi', ''),
-    ('Klik <strong>Simpan</strong>', ''),
+    ('Simpan', ''),
   ])}
 """)}
 
-<h3>Laporan Mingguan ASLAP</h3>
+<h3>Weekly Report</h3>
 {steps([
-  ('Klik tab <strong>Laporan Mingguan</strong>', ''),
+  ('Klik tab <strong>Weekly Report</strong>', ''),
   ('Pilih minggu yang ingin dilaporkan', ''),
   ('Klik <strong>Generate Laporan</strong> — sistem agregasi otomatis dari semua data minggu tersebut', ''),
   ('Review ringkasan: total checklist, rata-rata kualitas air, jumlah observasi, log komunikasi', ''),
@@ -1340,7 +1252,7 @@ Laporan mingguan akan di-generate hari Jumat.
 # BAB 11 — Keuangan
 # ─────────────────────────────────────────────────────────────────────────────
 
-BAB11 = chapter(11, "💰", "Keuangan — Expense, LRA & Tren Harga", "13:00", f"""
+BAB11 = chapter(11, "💰", "Akuntan Finance — Expense, LRA & Price Trends", "13:00", f"""
 {roles('accountant','kepala')}
 
 {story('''
@@ -1352,26 +1264,32 @@ dan ada satu bahan yang harganya naik 18% dari minggu lalu — perlu alert.
 Semua dia urus dalam satu platform.
 ''')}
 
-<h3>Membuka Modul Keuangan</h3>
+<h3>Halaman Akuntan Finance</h3>
+<!-- SHOT:finance -->
+
+<p>Judul halaman <strong>Akuntan Finance</strong> dengan subtitle
+<em>"Price trends · Cost-per-porsi · Expense · LRA biweekly · PO Generator"</em>.
+6 tab di atas: <code>Cost-per-porsi</code> (default aktif) · <code>Price Trends</code> · <code>Spike Alerts</code> · <code>Expense</code> · <code>LRA Biweekly</code> · <code>PO Generator</code>.</p>
+
+<h3>Membuka Modul</h3>
 {steps([
-  ('Sidebar → klik grup <strong>▼ KEUANGAN</strong>', ''),
-  ('4 sub-modul tersedia: Tren Harga, Expense Tracker, LRA Biweekly, Pembayaran Relawan', ''),
+  ('Sidebar → klik grup <strong>▼ KEUANGAN</strong> → klik <strong>Akuntan Finance</strong> (icon 💰)', 'URL: /finance'),
 ])}
 
-{feature_box('📈', 'Tren Harga & Spike Alert', f"""
+{feature_box('📈', 'Tab Price Trends & Spike Alerts', f"""
   {steps([
-    ('Sidebar → ▼ KEUANGAN → klik <strong>Tren Harga</strong>', 'URL: /finance → tab Tren Harga'),
-    ('Pilih bahan dari dropdown untuk melihat grafik harga historis', ''),
+    ('Klik tab <strong>Price Trends</strong>', ''),
+    ('Pilih bahan dari dropdown untuk melihat grafik harga historis (30/60/90 hari)', ''),
     ('Lihat kolom <strong>WoW%</strong> — perubahan harga minggu ini vs minggu lalu', ''),
-    ('Baris merah = spike alert (kenaikan ≥15%)', ''),
+    ('Klik tab <strong>Spike Alerts</strong> untuk daftar khusus bahan yang naik ≥15%', ''),
     ('Klik bahan yang spike untuk melihat detail riwayat harga dan supplier alternatif', ''),
   ])}
   {warn('Spike alert ≥15% berarti cost per porsi berisiko melewati batas Rp 15.000. Pertimbangkan substitusi bahan atau negosiasi ulang dengan supplier.')}
 """)}
 
-{feature_box('🧾', 'Expense Tracker', f"""
+{feature_box('🧾', 'Tab Expense', f"""
   {steps([
-    ('Sidebar → ▼ KEUANGAN → klik <strong>Expense</strong>', ''),
+    ('Klik tab <strong>Expense</strong>', ''),
     ('Klik <strong>+ Catat Pengeluaran</strong>', ''),
     ('Pilih <strong>Kategori</strong> dari 8 pilihan:', ''),
   ])}
@@ -1395,10 +1313,10 @@ Semua dia urus dalam satu platform.
   ])}
 """)}
 
-{feature_box('📋', 'LRA Biweekly (Laporan Realisasi Anggaran)', f"""
+{feature_box('📋', 'Tab LRA Biweekly (Laporan Realisasi Anggaran)', f"""
   <p>LRA adalah laporan keuangan wajib setiap 2 minggu yang merangkum seluruh pemasukan dan pengeluaran SPPG.</p>
   {steps([
-    ('Sidebar → ▼ KEUANGAN → klik <strong>LRA Biweekly</strong>', ''),
+    ('Klik tab <strong>LRA Biweekly</strong>', ''),
     ('Klik <strong>+ Generate LRA Baru</strong>', ''),
     ('Pilih periode (contoh: 16 Apr – 30 Apr 2026)', ''),
     ('Klik <strong>Generate</strong> — sistem agregasi otomatis dari semua expense dan transaksi periode tersebut', ''),
@@ -1410,12 +1328,23 @@ Semua dia urus dalam satu platform.
   {tip('LRA yang sudah ditandatangani masuk otomatis ke BGN Compliance Bundle. Tidak perlu input ulang.')}
 """)}
 
-{feature_box('👥', 'Pembayaran Relawan', f"""
+{feature_box('💼', 'Tab Cost-per-porsi (default tab aktif)', f"""
+  <p>Tab default saat pertama buka modul Finance. Menampilkan cost-per-porsi harian/mingguan/bulanan,
+  dengan threshold Rp 15.000 sebagai garis batas BGN.</p>
   {steps([
-    ('Sidebar → ▼ KEUANGAN → klik <strong>Relawan</strong>', ''),
-    ('Klik <strong>+ Catat Pembayaran</strong>', ''),
-    ('Isi nama relawan, peran, jumlah honor, dan tanggal pembayaran', ''),
-    ('Klik <strong>Simpan</strong> — tercatat di expense kategori khusus relawan', ''),
+    ('Pilih rentang periode (Today / This Week / This Month / Custom)', ''),
+    ('Lihat angka cost/porsi rata-rata dan grafik trend', ''),
+    ('Warna merah = sudah lewat threshold, kuning = mendekati', ''),
+  ])}
+""")}
+
+{feature_box('⚙️', 'Tab PO Generator', f"""
+  <p>Auto-generate Purchase Order dari forecast Approval Menu (lihat Bab 5).</p>
+  {steps([
+    ('Klik tab <strong>PO Generator</strong>', ''),
+    ('Pilih periode forecast yang sudah dihitung', ''),
+    ('Pilih supplier per kategori bahan', ''),
+    ('Klik <strong>Generate</strong> — PO baru muncul di halaman Purchase Orders dengan status <code>draft</code>', ''),
   ])}
 """)}
 """)
@@ -1425,67 +1354,37 @@ Semua dia urus dalam satu platform.
 # BAB 12 — Executive Dashboard
 # ─────────────────────────────────────────────────────────────────────────────
 
-SCREEN_EXEC = screen("/executive", f"""
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px">
-  <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px;text-align:center">
-    <div style="font-size:1.5rem;font-weight:800;color:#1E40AF">1.520</div>
-    <div style="font-size:0.7rem;color:#6B7280">Target Porsi</div>
-  </div>
-  <div style="background:#ECFDF5;border:1px solid #6EE7B7;border-radius:8px;padding:10px;text-align:center">
-    <div style="font-size:1.5rem;font-weight:800;color:#065F46">98.2%</div>
-    <div style="font-size:0.7rem;color:#6B7280">Konfirmasi Sekolah</div>
-  </div>
-  <div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:10px;text-align:center">
-    <div style="font-size:1.5rem;font-weight:800;color:#92400E">Rp13.2K</div>
-    <div style="font-size:0.7rem;color:#6B7280">Cost per Porsi</div>
-  </div>
-  <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:8px;padding:10px;text-align:center">
-    <div style="font-size:1.5rem;font-weight:800;color:#991B1B">0.8%</div>
-    <div style="font-size:0.7rem;color:#6B7280">Defect Rate</div>
-  </div>
-</div>
-<div style="background:#F0FDF4;border:1px solid #6EE7B7;border-radius:10px;padding:14px">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-    <div style="font-weight:700;font-size:0.9rem">🎯 Skor Kepatuhan BGN</div>
-    <div style="font-size:1.8rem;font-weight:800;color:#059669">87 <span style="font-size:1rem;color:#065F46">/ 100</span></div>
-  </div>
-  <div style="background:#D1FAE5;border-radius:999px;height:10px">
-    <div style="background:linear-gradient(90deg,#059669,#10B981);border-radius:999px;height:10px;width:87%"></div>
-  </div>
-  <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:0.72rem;color:#374151">
-    <span>Inspeksi 90%</span><span>Menu Approved 95%</span><span>Distribusi 98%</span><span>LRA 85%</span><span>Checklist 80%</span>
-  </div>
-  <div style="text-align:right;margin-top:4px"><span style="background:#059669;color:white;border-radius:999px;padding:2px 10px;font-size:0.75rem;font-weight:700">Grade A</span></div>
-</div>
-""")
+SCREEN_EXEC = screen("/executive", "")
 
-BAB12 = chapter(12, "📊", "Dashboard Eksekutif & BGN Compliance Bundle", "14:00", f"""
+BAB12 = chapter(12, "📈", "Executive Dashboard & BGN Compliance Bundle", "14:00", f"""
 {roles('kepala','super','platform')}
 
 {story('''
 <strong>14:00 siang.</strong> Kepala SPPG duduk di mejanya dengan secangkir kopi.
-Saatnya review harian. Dia buka tab <em>Eksekutif</em> di DPMBG.
-Dalam satu layar: 1.520 porsi target, 98.2% sekolah sudah konfirmasi terima,
-cost per porsi Rp 13.200 (masih aman di bawah target Rp 15.000), defect rate 0.8%.
-Skor kepatuhan BGN: 87/100 — Grade A. Hari yang baik.
-Dia klik <em>Export BGN Bundle</em> dan file JSON siap untuk laporan bulanan ke BGN.
+Saatnya review harian. Dia klik menu <em>Executive</em> di sidebar atas.
+Dalam satu layar: total porsi terkonfirmasi hari ini, % sekolah yang sudah konfirmasi,
+cost per porsi rata-rata, defect rate. Tab default <strong>Per Dapur</strong> aktif.
+Dia klik tombol hijau <em>📦 Export BGN Compliance Bundle</em> di pojok kanan atas
+dan file ZIP siap untuk laporan bulanan ke BGN.
 ''')}
 
-<h3>Membuka Dashboard Eksekutif</h3>
-{steps([
-  ('Sidebar → klik grup <strong>▼ EKSEKUTIF</strong>', ''),
-  ('Pilih level: <strong>Per-Kitchen KPI</strong> (Kepala SPPG) atau <strong>Multi-Kitchen</strong> (Superadmin/Platform Admin)', ''),
-])}
-
-<h3>Tampilan Dashboard Eksekutif</h3>
+<h3>Halaman Executive Dashboard</h3>
 {SCREEN_EXEC}
 
-<h3>KPI Per-Kitchen (Kepala SPPG)</h3>
+<p>Judul halaman <strong>Executive Dashboard</strong> dengan subtitle
+<em>"3 level: per-kitchen · multi-kitchen (yayasan) · platform-wide"</em>.
+3 tab pemilih level:
+<code>Per Dapur</code> (default aktif, untuk Kepala SPPG) ·
+<code>Multi-SPPG (Yayasan)</code> (untuk Superadmin) ·
+<code>Platform (Cross-Org)</code> (untuk Platform Admin).
+Tombol hijau besar <strong>📦 Export BGN Compliance Bundle</strong> di kanan atas — satu klik download bundle JSON+PDF
+yang berisi LRA + sampel + checklist + variance + porsi periode.</p>
+
 {steps([
-  ('Sidebar → ▼ EKSEKUTIF → klik <strong>Dashboard Eksekutif</strong>', 'URL: /executive'),
-  ('Lihat 4 kartu utama: Target Porsi, % Konfirmasi, Cost per Porsi, Defect Rate', ''),
-  ('Scroll ke bawah untuk grafik tren 30 hari (porsi terkonfirmasi, expense, defects, bahan diterima)', ''),
-  ('Klik <strong>Ganti Metrik</strong> untuk memilih metrik tren yang ditampilkan', ''),
+  ('Sidebar → klik <strong>Executive</strong> (pinned di atas, icon 📈)', 'URL: /executive'),
+  ('Tab default <strong>Per Dapur</strong> sudah aktif — lihat KPI dapur yang lagi aktif', ''),
+  ('Klik tab <strong>Multi-SPPG (Yayasan)</strong> kalau punya akses Superadmin — bandingin semua SPPG dalam organisasi', ''),
+  ('Klik tab <strong>Platform (Cross-Org)</strong> kalau Platform Admin — lihat agregat lintas organisasi', ''),
 ])}
 
 {feature_box('🎯', 'Skor Kepatuhan 5-Faktor', f"""
@@ -1511,22 +1410,22 @@ Dia klik <em>Export BGN Bundle</em> dan file JSON siap untuk laporan bulanan ke 
   )}
 """)}
 
-{feature_box('🏆', 'Multi-Kitchen Ranking (Superadmin)', f"""
+{feature_box('🏆', 'Multi-SPPG Ranking (Superadmin)', f"""
   <p>Superadmin (Yayasan) bisa melihat perbandingan semua SPPG dalam satu organisasi.</p>
   {steps([
     ('Login sebagai <strong>Superadmin</strong>', ''),
-    ('Sidebar → ▼ EKSEKUTIF → klik <strong>Multi-Kitchen</strong>', 'URL: /executive → tab Multi-Kitchen'),
+    ('Buka Executive Dashboard → klik tab <strong>Multi-SPPG (Yayasan)</strong>', 'URL: /executive'),
     ('Lihat ranking: SPPG dengan skor kepatuhan terbaik, cost terendah, defect rate terendah', ''),
   ])}
 """)}
 
 <h3>BGN Compliance Bundle Export</h3>
 {steps([
-  ('Sidebar → ▼ EKSEKUTIF → klik <strong>BGN Bundle</strong>', ''),
-  ('Pilih <strong>Dari Tanggal</strong> dan <strong>Sampai Tanggal</strong> (biasanya 1 bulan)', ''),
-  ('Klik <strong>Generate Bundle</strong> — sistem agregasi: LRA, sampel makanan, checklist, variance report', ''),
-  ('Review ringkasan yang muncul', ''),
-  ('Klik <strong>Download JSON</strong> untuk file yang bisa diserahkan ke BGN', ''),
+  ('Buka Executive Dashboard', 'Sidebar → Executive (icon 📈)'),
+  ('Klik tombol hijau <strong>📦 Export BGN Compliance Bundle</strong> di kanan atas', ''),
+  ('Pilih <strong>Dari Tanggal</strong> dan <strong>Sampai Tanggal</strong> (biasanya 1 bulan kalender berjalan)', ''),
+  ('Sistem otomatis agregasi: LRA, sampel makanan, checklist, variance report, total porsi', ''),
+  ('File ZIP berisi JSON + PDF terdownload — siap diserahkan ke BGN', ''),
 ])}
 
 {info('BGN Compliance Bundle berisi: data LRA periode, food samples dengan timestamps, daily checklists, variance report (defect rate, cost per porsi), dan total porsi bulan berjalan.')}
@@ -1546,38 +1445,41 @@ dan pemeliharaan sistem. Kepala SPPG menggunakan ini untuk mengelola data sekola
 dan pengguna. Superadmin mengelola dapur (kitchen). Platform Admin mengelola organisasi.
 ''')}
 
-{feature_box('🏫', 'Manajemen Sekolah', f"""
+{feature_box('🏫', 'Master Sekolah Binaan', f"""
+  <p>Halaman <strong>Master Sekolah Binaan</strong> di <code>/admin/schools</code>.
+  Default sandbox SPPG Paseh berisi 11 sekolah (3 TK, 7 SD, 1 SMP). Tabel kolom:
+  <strong>Nama · Jenjang · Kelompok AKG · Siswa · Jarak (m) · Kontak · Status · Aksi</strong>.</p>
   {steps([
-    ('Sidebar → ▼ MASTER DATA → klik <strong>Sekolah</strong>', 'URL: /admin/schools'),
-    ('Lihat daftar 23 sekolah beserta data: nama, jenjang, jumlah siswa, wave pengiriman', ''),
-    ('Klik <strong>+ Tambah Sekolah</strong> untuk mendaftarkan sekolah baru', ''),
-    ('Isi: nama resmi, kode sekolah, jenjang (PAUD/TK/SD/SMP), jumlah siswa, alamat', ''),
-    ('Jenjang menentukan wave pengiriman otomatis: PAUD/TK/SD → Wave 1; SD 7-9/SMP → Wave 2', ''),
-    ('Klik <strong>Simpan</strong>', ''),
-    ('Untuk edit: klik sekolah yang ada → klik <strong>Edit</strong>', ''),
+    ('Sidebar → ▼ MASTER DATA → klik <strong>Sekolah</strong> (icon 🏫)', 'URL: /admin/schools'),
+    ('Centang checkbox <strong>Tampilkan non-aktif</strong> di header kalau mau lihat yang sudah dinonaktifkan', ''),
+    ('Klik tombol biru <strong>+ Tambah Sekolah</strong> di kanan atas untuk mendaftarkan baru', ''),
+    ('Isi: nama, jenjang (PAUD / TK / SD / SMP), kelompok AKG, jumlah siswa, jarak (m), kontak', ''),
+    ('Jenjang menentukan wave pengiriman otomatis: PAUD/TK/SD = Wave 1; SMP = Wave 2', ''),
+    ('Status default <span style="color:#059669">Aktif</span> — bisa di-Edit / Nonaktifkan per baris', ''),
   ])}
 """)}
 
-{feature_box('👤', 'Manajemen Pengguna', f"""
+{feature_box('👤', 'Users — Manajemen Pengguna', f"""
+  <p>Halaman <strong>Users</strong> di <code>/admin/users</code>. Tabel kolom:
+  <strong>ID · USERNAME · ROLE · KITCHENS</strong> + aksi inline <strong>Role | Reset pw | Delete</strong> per baris.</p>
   {steps([
-    ('Sidebar → ▼ ADMIN → klik <strong>Pengguna</strong>', 'URL: /admin/users'),
-    ('Lihat daftar semua pengguna yang terdaftar di dapur ini', ''),
-    ('Klik <strong>+ Tambah Pengguna</strong>', ''),
-    ('Isi username, nama lengkap, password awal, dan pilih role', ''),
-    ('Role yang bisa dipilih: <code>head_sppg</code>, <code>nutritionist</code>, <code>accountant</code>, <code>aslap</code>, <code>head_kitchen</code>', ''),
-    ('Klik <strong>Simpan</strong> — pengguna baru bisa langsung login', ''),
+    ('Sidebar → ▼ ADMIN DAPUR → klik <strong>Users</strong> (icon 👤)', 'URL: /admin/users'),
+    ('Klik tombol gelap <strong>+ New user</strong> di kanan atas', ''),
+    ('Isi username, password awal, role global, dan assign ke kitchen tertentu', ''),
+    ('Role per-kitchen yang bisa dipilih: <code>head_sppg</code>, <code>nutritionist</code>, <code>accountant</code>, <code>aslap</code>, <code>head_kitchen</code>', ''),
+    ('Untuk ganti role user existing: klik link <strong>Role</strong> di baris user', ''),
+    ('Untuk reset password: klik <strong>Reset pw</strong> — sistem generate password baru', ''),
+    ('Untuk hapus user: klik <strong>Delete</strong> (warna merah)', ''),
   ])}
   {warn('Setiap pengguna hanya bisa melihat data dari dapur (kitchen) yang sama. Untuk akses multi-dapur, gunakan role Superadmin.')}
 """)}
 
-{feature_box('🏢', 'Manajemen Dapur (Superadmin)', f"""
+{feature_box('🏢', 'Kitchens & All Kitchens (Superadmin)', f"""
   {steps([
     ('Login sebagai <strong>Superadmin</strong>', ''),
-    ('Sidebar → ▼ ADMIN → klik <strong>Dapur</strong>', ''),
-    ('Lihat semua SPPG / dapur dalam organisasi Anda', ''),
-    ('Klik <strong>+ Tambah Dapur</strong> untuk mendaftarkan SPPG baru', ''),
-    ('Isi nama SPPG, lokasi, dan informasi kontak', ''),
-    ('Superadmin bisa switch masuk ke dapur manapun untuk monitor', ''),
+    ('Sidebar → ▼ ADMIN DAPUR → klik <strong>Kitchens</strong> (icon 🏠) untuk kelola dapur per org', ''),
+    ('Sidebar → ▼ ADMIN DAPUR → klik <strong>All Kitchens</strong> (icon 🌐) untuk overview lintas dapur', ''),
+    ('Platform Admin bonus: ▼ PLATFORM → <strong>Organizations</strong> (icon 🏢) untuk kelola organisasi/yayasan', ''),
   ])}
 """)}
 """)
@@ -1593,24 +1495,24 @@ BAB14 = chapter(14, "⚡", "Cheat Sheet Harian", "Referensi Cepat", f"""
 {data_table(
   ['Waktu', 'Siapa', 'Tugas', 'Sidebar Path'],
   [
-    ['H-1 | 13:00', '💰 Akuntan', 'Cek tren harga + buat PO ke supplier', '▼ PENERIMAAN → Purchase Orders'],
-    ['H-1 | 17:00', '🥗 Ahli Gizi', 'Build Menu Manual + cek AKG + siklus 20 hari', '▼ MENU & GIZI → Build Menu Manual'],
-    ['H-1 | 18:00', '🥗 Ahli Gizi', 'Submit menu untuk review', '▼ MENU & GIZI → Menu Approval'],
-    ['H-1 | 18:00', '👔 Kepala SPPG', 'Approve atau reject menu', '▼ MENU & GIZI → Menu Approval'],
-    ['04:00', '🦺 ASLAP', 'Buat inspeksi saat truk supplier tiba', '▼ PENERIMAAN → Inspeksi Bersama'],
-    ['04:00', '🥗 Ahli Gizi', 'Tanda tangan kualitas gizi di inspeksi', '▼ PENERIMAAN → Inspeksi Bersama'],
-    ['04:00', '💰 Akuntan', 'Tanda tangan kuantitas di inspeksi', '▼ PENERIMAAN → Inspeksi Bersama'],
-    ['04:30', '👔 Kepala SPPG', 'Login & cek dashboard + notifikasi', '/ → 🔔 bell'],
-    ['05:30', '👨‍🍳 Kepala Chef', 'Mulai batch produksi + scan QR container', '▼ OPERASI DAPUR → Produksi Batch'],
-    ['06:00', '🦺 ASLAP', 'Isi checklist harian + kualitas air', '▼ LAPANGAN → Dasbor ASLAP'],
-    ['07:00', '🥗 Ahli Gizi', 'Approve QC setelah batch selesai + ambil food sample', '▼ OPERASI DAPUR → Produksi Batch'],
-    ['08:00', '🦺 ASLAP', 'Dispatch Gelombang 1 (PAUD/TK/SD kelas 1-3)', '▼ DISTRIBUSI → Distribusi Makanan'],
-    ['10:00', '🦺 ASLAP', 'Dispatch Gelombang 2 (SD kelas 4-6/SMP)', '▼ DISTRIBUSI → Distribusi Makanan'],
-    ['13:00', '💰 Akuntan', 'Catat pengeluaran hari ini', '▼ KEUANGAN → Expense'],
-    ['14:00', '👔 Kepala SPPG', 'Review KPI + skor kepatuhan harian', '▼ EKSEKUTIF → Dashboard Eksekutif'],
-    ['Jumat', '🦺 ASLAP', 'Generate + submit laporan mingguan ASLAP', '▼ LAPANGAN → Dasbor ASLAP → Laporan'],
-    ['2x/bulan', '💰 Akuntan', 'Generate + submit LRA biweekly', '▼ KEUANGAN → LRA Biweekly'],
-    ['Kapan saja', '👩‍🏫 Guru Sekolah', 'Konfirmasi terima makanan (via link WA)', 'Halaman publik, tidak perlu login'],
+    ['H-1 | 13:00', '💰 Akuntan', 'Cek price trends + buat PO ke supplier', '▼ PENERIMAAN BAHAN → Purchase Orders'],
+    ['H-1 | 17:00', '🥗 Ahli Gizi', 'Build menu (manual atau planner) + cek AKG real-time', '▼ MENU & GIZI → Build Manual / Menu Planner'],
+    ['H-1 | 18:00', '🥗 Ahli Gizi', 'Submit menu untuk review', '▼ MENU & GIZI → Approval Menu'],
+    ['H-1 | 18:00', '👔 Kepala SPPG', 'Approve atau reject menu (tab Nunggu Review)', '▼ MENU & GIZI → Approval Menu'],
+    ['04:00', '🦺 ASLAP', 'Buat inspeksi saat truk supplier tiba (klik + Mulai Inspeksi)', '▼ PENERIMAAN BAHAN → Joint Inspection'],
+    ['04:00', '🥗 Ahli Gizi', 'Sign-off kualitas gizi di inspeksi', '▼ PENERIMAAN BAHAN → Joint Inspection'],
+    ['04:00', '💰 Akuntan', 'Sign-off kuantitas di inspeksi', '▼ PENERIMAAN BAHAN → Joint Inspection'],
+    ['04:30', '👔 Kepala SPPG', 'Login & cek Dashboard + notifikasi bell', '⊞ Dashboard → 🔔 bell'],
+    ['05:30', '👨‍🍳 Kepala Chef', 'Mulai batch produksi + scan QR container (tablet)', '▼ PRODUKSI & DISTRIBUSI → Production'],
+    ['06:00', '🦺 ASLAP', 'Isi Checklist Hari Ini + Water Quality', '▼ LAPANGAN & MONITORING → ASLAP Daily'],
+    ['07:00', '🥗 Ahli Gizi', 'Approve QC + ambil food sample', '▼ PRODUKSI & DISTRIBUSI → Production'],
+    ['08:00', '🦺 ASLAP', 'Dispatch Wave 1 (PAUD/TK/SD)', '▼ PRODUKSI & DISTRIBUSI → Distribusi → tab Wave 1 & 2'],
+    ['10:00', '🦺 ASLAP', 'Dispatch Wave 2 (SMP)', '▼ PRODUKSI & DISTRIBUSI → Distribusi → tab Wave 1 & 2'],
+    ['13:00', '💰 Akuntan', 'Catat pengeluaran hari ini', '▼ KEUANGAN → Akuntan Finance → tab Expense'],
+    ['14:00', '👔 Kepala SPPG', 'Review KPI + Export BGN Compliance Bundle', '📈 Executive (pinned)'],
+    ['Jumat', '🦺 ASLAP', 'Generate + submit Weekly Report', '▼ LAPANGAN & MONITORING → ASLAP Daily → tab Weekly Report'],
+    ['2x/bulan', '💰 Akuntan', 'Generate + submit LRA biweekly', '▼ KEUANGAN → Akuntan Finance → tab LRA Biweekly'],
+    ['Kapan saja', '👩‍🏫 Guru Sekolah', 'Konfirmasi terima makanan (via link WA)', 'Halaman publik /confirm/<token>'],
   ]
 )}
 
@@ -1618,13 +1520,13 @@ BAB14 = chapter(14, "⚡", "Cheat Sheet Harian", "Referensi Cepat", f"""
 {data_table(
   ['Situasi', 'Yang Harus Dilakukan', 'Lokasi'],
   [
-    ['Bahan ditolak saat inspeksi', 'Klik Tolak Bahan → Buat Dispute → Catat alasan', 'Inspeksi Bersama'],
-    ['Kamera QR tidak bisa scan', 'Klik Input Manual → ketik kode BHN-XXXXXXXX', 'Produksi Batch'],
-    ['Sekolah tidak konfirmasi', 'Hubungi guru dan kirim ulang link konfirmasi', 'Distribusi → detail sekolah'],
-    ['Spike harga bahan >15%', 'Notifikasi otomatis muncul — cari supplier alternatif', 'Keuangan → Tren Harga'],
-    ['Air TDS >500 atau pH abnormal', 'Alert otomatis → laporkan ke Kepala SPPG segera', 'ASLAP → Kualitas Air'],
-    ['Menu ditolak (reject)', 'Cek catatan alasan dari Kepala SPPG → revisi → submit ulang', 'Menu Approval'],
-    ['Lupa password', 'Hubungi Kepala SPPG atau Superadmin untuk reset password', 'Admin → Pengguna'],
+    ['Bahan ditolak saat inspeksi', 'Klik Tolak Bahan → Buat Dispute → Catat alasan', 'Joint Inspection'],
+    ['Kamera QR tidak bisa scan', 'Pakai tombol Scan → kalau gagal, ketik kode BHN-XXXXXXXX manual', 'Production'],
+    ['Sekolah tidak konfirmasi', 'Hubungi guru dan kirim ulang link konfirmasi', 'Distribusi → tab Aggregate Hari Ini'],
+    ['Spike harga bahan ≥15%', 'Alert otomatis muncul di tab Spike Alerts — cari supplier alternatif', 'Akuntan Finance → Spike Alerts'],
+    ['Air TDS >500 atau pH abnormal', 'Alert otomatis → laporkan ke Kepala SPPG segera', 'ASLAP Daily → Water Quality'],
+    ['Menu ditolak (Ditolak)', 'Cek catatan alasan dari Kepala SPPG → revisi → submit ulang', 'Approval Menu → tab Ditolak'],
+    ['Lupa password', 'Hubungi Kepala SPPG atau Superadmin untuk klik Reset pw', 'Users (/admin/users)'],
   ]
 )}
 
@@ -1644,33 +1546,31 @@ APPENDIX = f"""<div class="chapter" id="appendix">
     <span class="ch-time">⏰ Kapan Saja</span>
   </div>
 
-  <h3>Daftar Lengkap Role & Hak Akses</h3>
+  <h3>Daftar Lengkap Role & Hak Akses (Match Sidebar)</h3>
   {data_table(
-    ['Fitur / Halaman', '👔 Kepala', '🥗 Gizi', '💰 Akun', '🦺 ASLAP', '👨‍🍳 Chef'],
+    ['Menu Sidebar', '👔 Kepala', '🥗 Gizi', '💰 Akun', '🦺 ASLAP', '👨‍🍳 Chef'],
     [
-      ['Dashboard', '✅', '✅', '✅', '✅', '✅'],
-      ['Build Menu Manual', '✅', '✅', '', '', ''],
-      ['Menu Approval', '✅ (approve)', '✅ (submit)', '', '', ''],
-      ['Student Requests', '✅', '✅', '', '✅', ''],
-      ['Purchase Orders', '✅', '', '✅', '', ''],
-      ['Tren Harga', '✅', '✅', '✅', '', ''],
-      ['Inspeksi (buat)', '✅', '', '✅ (qty)', '✅', ''],
-      ['Inspeksi (tanda tangan)', '✅', '✅ (gizi)', '✅ (qty)', '✅ (fisik)', ''],
-      ['Container Split', '✅', '', '', '✅', ''],
-      ['Produksi Batch', '✅', '', '', '', '✅'],
-      ['QR Scan', '✅', '', '', '', '✅'],
-      ['QC Approve', '✅', '✅', '', '', ''],
-      ['Distribusi Dispatch', '✅', '', '', '✅', ''],
-      ['ASLAP Checklist', '✅ (view)', '', '', '✅ (isi)', ''],
-      ['Kualitas Air', '✅ (view)', '', '', '✅ (isi)', ''],
-      ['Laporan ASLAP', '✅ (ttd)', '', '', '✅ (buat)', ''],
-      ['Expense Tracker', '✅', '', '✅', '', ''],
-      ['LRA Biweekly', '✅ (ttd)', '', '✅ (buat)', '', ''],
-      ['Executive Dashboard', '✅', '', '', '', ''],
-      ['BGN Compliance Bundle', '✅', '', '✅', '', ''],
-      ['Manajemen Sekolah', '✅', '', '', '', ''],
-      ['Manajemen Supplier', '✅', '', '✅', '', ''],
-      ['Manajemen Pengguna', '✅', '', '', '', ''],
+      ['⊞ Dashboard', '✅', '✅', '✅', '✅', '✅'],
+      ['📈 Executive', '✅', '✅', '✅', '✅', '✅'],
+      ['☰ Menu Planner', '✅', '✅', '', '', ''],
+      ['✎ Build Manual', '✅', '✅', '', '', ''],
+      ['✓ Approval Menu', '✅ (approve)', '✅ (submit)', '', '', ''],
+      ['📊 Nutrisi Harian', '✅', '✅', '', '', ''],
+      ['📋 Purchase Orders', '✅', '✅ (read)', '✅', '✅ (read)', ''],
+      ['🤝 Joint Inspection', '✅ (all)', '✅ (Quality)', '✅ (Quantity)', '✅ (Physical)', ''],
+      ['↓ Receiving (Quick)', '✅', '', '', '✅', ''],
+      ['🍳 Production', '✅', '✅ (QC approve)', '', '✅ (observe)', '✅ (start/end)'],
+      ['🚐 Distribusi', '✅', '✅ (audit)', '✅ (read)', '✅ (dispatch)', ''],
+      ['📝 ASLAP Daily', '✅ (view)', '', '', '✅ (isi)', ''],
+      ['⚠ Scan Errors', '✅', '', '✅', '✅', '✅'],
+      ['📉 Variance Report', '✅', '', '✅', '✅', ''],
+      ['💰 Akuntan Finance', '✅ (ttd LRA)', '✅ (price trends)', '✅ (full)', '', ''],
+      ['🏫 Sekolah', '✅', '✅ (read)', '✅ (read)', '✅ (read)', '✅ (read)'],
+      ['📦 Supplier', '✅', '✅ (read)', '✅ (manage)', '✅ (read)', ''],
+      ['🌐 All Kitchens', 'superadmin only', '', '', '', ''],
+      ['🏠 Kitchens', '✅', '', '', '', ''],
+      ['👤 Users', '✅', '', '', '', ''],
+      ['🏢 Organizations', 'platform_admin only', '', '', '', ''],
     ]
   )}
 
