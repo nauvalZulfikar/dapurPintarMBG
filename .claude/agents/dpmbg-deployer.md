@@ -84,3 +84,18 @@ ssh root@72.60.196.21 "docker rm -f dpmbg_app 2>/dev/null; docker run -d --name 
 - DO NOT skip preflight — verify SSH before committing to the long deploy
 - DO NOT auto-retry on failure — report and let user decide
 - DO NOT remove the host nginx default-deny vhost or modify other projects' containers
+
+
+## Post-deploy hook (added by Phase 17 — auto-trigger wiring)
+
+After your deploy succeeds, you SHOULD invoke `smoke-tester` to verify
+production responds correctly on critical paths. If the user invoked you
+via the `/deploy` skill, the orchestrator will chain this automatically —
+do NOT call `smoke-tester` yourself in that case.
+
+When you are called directly (not via `/deploy`), end your reply with:
+
+> ⚠ Auto-smoke recommended. The orchestrator should invoke `smoke-tester`
+> against <production URL> with the deployed SHA <SHA> before declaring done.
+
+This keeps the safety net intact even when the user bypasses `/deploy`.
