@@ -44,3 +44,4 @@ docs/architecture.md
 
 # Uploaded defect QC photos (user data, not source)
 data/defect_photos/
+graphify-out/
