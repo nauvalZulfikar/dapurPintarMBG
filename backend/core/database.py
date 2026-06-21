@@ -298,7 +298,7 @@ remote_audit_log = Table(
     Column("kitchen_id",     Integer, nullable=True, index=True),
     Column("org_id",         Integer, nullable=True, index=True),
     Column("action",         String(80), nullable=False, index=True), # e.g. "user.create", "price.override", "login.fail"
-    Column("event_category", String(30), nullable=True, index=True),  # auth | menu | receiving | production | distribution | finance | compliance | system
+    Column("event_category", String(30), nullable=True),  # auth | menu | receiving | production | distribution | finance | compliance | system  (composite index defined below)
     Column("target_type",    String(50), nullable=True),              # e.g. "user", "food_price", "kitchen"
     Column("target_id",      String(100), nullable=True),             # FK as string (FK type may vary)
     Column("before_value",   Text, nullable=True),                    # JSON snapshot before update/delete

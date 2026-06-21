@@ -30,7 +30,7 @@ This project does **NOT use docker-compose** in prod. Restart requires `docker r
 
 ### 2. Build frontend locally (smaller transfer)
 ```bash
-cd "D:/Downloads/coding project/DPMBG_Project/frontend" && rtk npm install && rtk npm run build
+cd "/Users/shaka-mac-mini/coding-projects/DPMBG_Project/frontend" && rtk npm install && rtk npm run build
 ```
 Verify `frontend/dist/` exists before continuing.
 
@@ -45,7 +45,7 @@ rsync -avz --delete \
   --exclude='.claude' --exclude='*.log' --exclude='agent.py' \
   --exclude='api_keys.json' --exclude='*.png' --exclude='Salinan*.xlsx' \
   --exclude='IMPROVEMENTS.md' --exclude='MULTI_KITCHEN.md' \
-  "D:/Downloads/coding project/DPMBG_Project/" root@72.60.196.21:/root/projects/dpmbg/
+  "/Users/shaka-mac-mini/coding-projects/DPMBG_Project/" root@72.60.196.21:/root/projects/dpmbg/
 ```
 Note: rsync on Windows Git-Bash lives at `C:\Users\Lenovo\bin\rsync.exe` (manually installed). If `rsync` not on PATH, use that absolute path.
 
