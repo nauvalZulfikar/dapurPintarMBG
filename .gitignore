@@ -40,6 +40,7 @@ docs/architecture.md
 # Test artifacts (Playwright screenshots created at script root)
 *.png
 !docs/screenshots/*.png
+!docs/screenshots/**/*.png
 !frontend/public/**/*.png
 
 # Uploaded defect QC photos (user data, not source)
