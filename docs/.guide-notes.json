@@ -1,0 +1,3311 @@
+{
+  "dashboard": {
+    "headings": [
+      "Dashboard",
+      "Pipeline Funnel",
+      "Item Processing Rate",
+      "Tray Fill Rate",
+      "Avg Durations",
+      "Hourly Scan Activity",
+      "Delivery Status per School",
+      "Delivery Completion Timeline",
+      "7-Day Receiving Trend"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "Export Range",
+      "Delivery Status per School 3 schools ▲ collapse",
+      "Delivery Completion Timeline 3 schools ▲ collapse",
+      "Items",
+      "Trays"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      },
+      {
+        "text": "Export Daily",
+        "href": "/api/export/daily?date=2026-06-22"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "date",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "text",
+        "name": "",
+        "placeholder": "Search by name..."
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/",
+    "_label": "Dashboard",
+    "_shot": "docs/screenshots/guide/dashboard/00-base.png"
+  },
+  "executive": {
+    "headings": [
+      "Executive Dashboard"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "📥 Export BGN Compliance Bundle",
+      "Per Dapur",
+      "Multi-SPPG (Yayasan)",
+      "Platform (Cross-Org)"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/executive",
+    "_label": "Executive",
+    "_shot": "docs/screenshots/guide/executive/00-base.png"
+  },
+  "menu-planner": {
+    "headings": [
+      "Menu Planner",
+      "Daftar Bahan Makanan TKPI 2020"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "📁 Buka Tersimpan",
+      "Scrape 50 Item",
+      "Scrape Semua",
+      "Optimasi Menu",
+      "+ Tambah Kelompok",
+      "Atur AKG ▼",
+      "↻ Refresh",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "✎",
+      "✎",
+      "hist",
+      "edit",
+      "«",
+      "‹",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "›",
+      "»"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "number",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "number",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "number",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "number",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "number",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "number",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "text",
+        "name": "",
+        "placeholder": "Cari nama bahan..."
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      },
+      {
+        "name": "",
+        "options": [
+          "TK (4-6 tahun)",
+          "SD (7-9 tahun)",
+          "SD (10-12 tahun)",
+          "SMP (13-15 tahun)",
+          "SMA (16-18 tahun)"
+        ]
+      },
+      {
+        "name": "",
+        "options": [
+          "Semua Kategori",
+          "Makanan Pokok",
+          "Lauk Hewani",
+          "Lauk Nabati",
+          "Sayuran",
+          "Buah",
+          "Lainnya"
+        ]
+      }
+    ],
+    "_route": "/menu-planner",
+    "_label": "Menu Planner",
+    "_shot": "docs/screenshots/guide/menu-planner/00-base.png"
+  },
+  "build-manual": {
+    "headings": [
+      "Build Menu Manual",
+      "Bahan dipilih (0)",
+      "Analisis Gizi & Biaya"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "text",
+        "name": "",
+        "placeholder": "Cari bahan TKPI (nama atau kode)..."
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      },
+      {
+        "name": "",
+        "options": [
+          "TK (4-6 tahun)",
+          "SD (7-9 tahun)",
+          "SD (10-12 tahun)",
+          "SMP (13-15 tahun)",
+          "SMA (16-18 tahun)"
+        ]
+      }
+    ],
+    "_route": "/menu-manual",
+    "_label": "Build Manual",
+    "_shot": "docs/screenshots/guide/build-manual/00-base.png"
+  },
+  "menu-approval": {
+    "headings": [
+      "Approval Menu",
+      "Forecast Bahan dari Menu Approved"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "Nunggu Review",
+      "Draft",
+      "Disetujui",
+      "Terkunci",
+      "Ditolak",
+      "Arsip",
+      "Semua",
+      "Hitung"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "date",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "date",
+        "name": "",
+        "placeholder": ""
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/menu-approval",
+    "_label": "Approval Menu",
+    "_shot": "docs/screenshots/guide/menu-approval/00-base.png"
+  },
+  "nutrisi": {
+    "headings": [
+      "Laporan Nutrisi"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "Laporan Harian",
+      "AKG Tracker Mingguan",
+      "Refresh"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "date",
+        "name": "",
+        "placeholder": ""
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/nutrisi",
+    "_label": "Nutrisi Harian",
+    "_shot": "docs/screenshots/guide/nutrisi/00-base.png"
+  },
+  "purchase-orders": {
+    "headings": [
+      "Purchase Orders"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "+ PO Baru",
+      "Semua",
+      "draft",
+      "sent",
+      "partial",
+      "received",
+      "closed",
+      "cancelled",
+      "Detail"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/purchase-orders",
+    "_label": "Purchase Orders",
+    "_shot": "docs/screenshots/guide/purchase-orders/00-base.png"
+  },
+  "inspections": {
+    "headings": [
+      "Joint Inspection"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "+ Mulai Inspeksi",
+      "inspecting",
+      "pending",
+      "accepted",
+      "partial",
+      "rejected",
+      "Semua"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/inspections",
+    "_label": "Joint Inspection",
+    "_shot": "docs/screenshots/guide/inspections/00-base.png"
+  },
+  "receiving": {
+    "headings": [
+      "Receiving",
+      "Daftar Bahan Diterima",
+      "Defect / Bahan Ditolak"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "Bahan Masuk",
+      "Defect / Reject",
+      "Submit",
+      "Test Print"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "text",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "number",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "textarea",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "date",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "text",
+        "name": "",
+        "placeholder": "Cari nama..."
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      },
+      {
+        "name": "",
+        "options": [
+          "g",
+          "kg",
+          "pcs"
+        ]
+      }
+    ],
+    "_route": "/receiving",
+    "_label": "Receiving (Quick)",
+    "_shot": "docs/screenshots/guide/receiving/00-base.png"
+  },
+  "production": {
+    "headings": [
+      "Production — Tablet Kepala Chef",
+      "Menu Approved Hari Ini",
+      "Batch Aktif",
+      "Tablet Scan — Step Processing (JWT auth)"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "▶ Confirm & Mulai Produksi",
+      "Detail",
+      "📷 Scan"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/production",
+    "_label": "Production",
+    "_shot": "docs/screenshots/guide/production/00-base.png"
+  },
+  "distributions": {
+    "headings": [
+      "Distribusi Hari Ini"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "Aggregate Hari Ini",
+      "Wave 1 & 2",
+      "Sisa Porsi",
+      "Vehicle & Driver"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/distributions",
+    "_label": "Distribusi",
+    "_shot": "docs/screenshots/guide/distributions/00-base.png"
+  },
+  "aslap": {
+    "headings": [
+      "ASLAP — Operasi Harian",
+      "Checklist 2026-06-22"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "Checklist Hari Ini",
+      "Water Quality",
+      "Production Obs",
+      "Komunikasi Sekolah",
+      "Weekly Report",
+      "✓ OK",
+      "✗ NO",
+      "✓ OK",
+      "✗ NO",
+      "✓ OK",
+      "✗ NO",
+      "✓ OK",
+      "✗ NO",
+      "✓ OK",
+      "✗ NO",
+      "✓ OK",
+      "✗ NO",
+      "Submit Checklist",
+      "Save Draft"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "number",
+        "name": "",
+        "placeholder": ""
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/aslap",
+    "_label": "ASLAP Daily",
+    "_shot": "docs/screenshots/guide/aslap/00-base.png"
+  },
+  "scan-errors": {
+    "headings": [
+      "Scan Errors"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/scan-errors",
+    "_label": "Scan Errors",
+    "_shot": "docs/screenshots/guide/scan-errors/00-base.png"
+  },
+  "variance": {
+    "headings": [
+      "Laporan Variance & Waste"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "Refresh"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      },
+      {
+        "text": "Export Excel",
+        "href": "/api/export/range?from=2026-05-23&to=2026-06-22"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "date",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "date",
+        "name": "",
+        "placeholder": ""
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/reports/variance",
+    "_label": "Variance Report",
+    "_shot": "docs/screenshots/guide/variance/00-base.png"
+  },
+  "finance": {
+    "headings": [
+      "Akuntan Finance",
+      "Breakdown Kategori"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "Cost-per-porsi",
+      "Price Trends",
+      "Spike Alerts",
+      "Expense",
+      "LRA Biweekly",
+      "PO Generator",
+      "Update"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "date",
+        "name": "",
+        "placeholder": ""
+      },
+      {
+        "type": "date",
+        "name": "",
+        "placeholder": ""
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/finance",
+    "_label": "Akuntan Finance",
+    "_shot": "docs/screenshots/guide/finance/00-base.png"
+  },
+  "admin-schools": {
+    "headings": [
+      "Master Sekolah Binaan"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "+ Tambah Sekolah",
+      "Edit",
+      "Nonaktifkan",
+      "Edit",
+      "Nonaktifkan",
+      "Edit",
+      "Nonaktifkan"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/admin/schools",
+    "_label": "Master Sekolah",
+    "_shot": "docs/screenshots/guide/admin-schools/00-base.png"
+  },
+  "admin-suppliers": {
+    "headings": [
+      "Master Supplier"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "+ Tambah Supplier",
+      "Edit",
+      "Nonaktifkan",
+      "Edit",
+      "Nonaktifkan",
+      "Edit",
+      "Nonaktifkan"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "checkbox",
+        "name": "",
+        "placeholder": ""
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/admin/suppliers",
+    "_label": "Master Supplier",
+    "_shot": "docs/screenshots/guide/admin-suppliers/00-base.png"
+  },
+  "admin-users": {
+    "headings": [
+      "Users"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "+ New user",
+      "remove",
+      "Role",
+      "Reset pw",
+      "Delete",
+      "Role",
+      "Reset pw",
+      "Delete"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      },
+      {
+        "name": "",
+        "options": [
+          "+ assign kitchen…",
+          "Test Sandbox Kitchen"
+        ]
+      }
+    ],
+    "_route": "/admin/users",
+    "_label": "Users",
+    "_shot": "docs/screenshots/guide/admin-users/00-base.png"
+  },
+  "admin-kitchens": {
+    "headings": [
+      "Kitchens"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "+ New kitchen",
+      "Edit",
+      "Deactivate"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/admin/kitchens",
+    "_label": "Kitchens",
+    "_shot": "docs/screenshots/guide/admin-kitchens/00-base.png"
+  },
+  "admin-overview": {
+    "headings": [
+      "All Kitchens Overview",
+      "7-day received trend — per kitchen"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [
+      {
+        "type": "date",
+        "name": "",
+        "placeholder": ""
+      }
+    ],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/admin/overview",
+    "_label": "All Kitchens",
+    "_shot": "docs/screenshots/guide/admin-overview/00-base.png"
+  },
+  "admin-orgs": {
+    "headings": [
+      "Organizations"
+    ],
+    "tabs": [],
+    "buttons": [
+      "🔔",
+      "←",
+      "MENU & GIZI ▼",
+      "PENERIMAAN BAHAN ▼",
+      "PRODUKSI & DISTRIBUSI ▼",
+      "LAPANGAN & MONITORING ▼",
+      "KEUANGAN ▼",
+      "MASTER DATA ▼",
+      "ADMIN DAPUR ▼",
+      "PLATFORM ▼",
+      "☾ Dark mode",
+      "⏻ Logout",
+      "+ New organization",
+      "Rename",
+      "Deactivate"
+    ],
+    "links": [
+      {
+        "text": "⊞ Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "📈 Executive",
+        "href": "/executive"
+      },
+      {
+        "text": "☰ Menu Planner",
+        "href": "/menu-planner"
+      },
+      {
+        "text": "✎ Build Manual",
+        "href": "/menu-manual"
+      },
+      {
+        "text": "✓ Approval Menu",
+        "href": "/menu-approval"
+      },
+      {
+        "text": "📊 Nutrisi Harian",
+        "href": "/nutrisi"
+      },
+      {
+        "text": "📋 Purchase Orders",
+        "href": "/purchase-orders"
+      },
+      {
+        "text": "🤝 Joint Inspection",
+        "href": "/inspections"
+      },
+      {
+        "text": "↓ Receiving (Quick)",
+        "href": "/receiving"
+      },
+      {
+        "text": "🍳 Production",
+        "href": "/production"
+      },
+      {
+        "text": "🚐 Distribusi",
+        "href": "/distributions"
+      },
+      {
+        "text": "📝 ASLAP Daily",
+        "href": "/aslap"
+      },
+      {
+        "text": "⚠ Scan Errors",
+        "href": "/scan-errors"
+      },
+      {
+        "text": "📉 Variance Report",
+        "href": "/reports/variance"
+      },
+      {
+        "text": "💰 Akuntan Finance",
+        "href": "/finance"
+      },
+      {
+        "text": "🏫 Sekolah",
+        "href": "/admin/schools"
+      },
+      {
+        "text": "📦 Supplier",
+        "href": "/admin/suppliers"
+      },
+      {
+        "text": "🌐 All Kitchens",
+        "href": "/admin/overview"
+      },
+      {
+        "text": "🏠 Kitchens",
+        "href": "/admin/kitchens"
+      },
+      {
+        "text": "👤 Users",
+        "href": "/admin/users"
+      },
+      {
+        "text": "🏢 Organizations",
+        "href": "/admin/organizations"
+      }
+    ],
+    "inputs": [],
+    "selects": [
+      {
+        "name": "",
+        "options": [
+          "🌐 All kitchens",
+          "Test Sandbox Kitchen · platform_admin"
+        ]
+      }
+    ],
+    "_route": "/admin/organizations",
+    "_label": "Organizations",
+    "_shot": "docs/screenshots/guide/admin-orgs/00-base.png"
+  }
+}
